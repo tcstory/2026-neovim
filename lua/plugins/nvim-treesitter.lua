@@ -9,7 +9,6 @@ return {
     highlight = { enable = true }, ---@type lazyvim.TSFeat
     folds = { enable = true }, ---@type lazyvim.TSFeat
     ensure_installed = {
-      "norg",
       "bash",
       "jsdoc",
       "json",
@@ -19,6 +18,12 @@ return {
       "luap",
       "markdown",
       "markdown_inline",
+      "javascript",
+      "typescript",
+      "vue",
+      "css",
+      "scss",
+      "html",
     },
   },
 }
