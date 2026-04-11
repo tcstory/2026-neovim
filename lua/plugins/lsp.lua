@@ -5,7 +5,11 @@ return {
     'saghen/blink.cmp',
     version = '1.*',
     opts = {
-      keymap = { preset = 'default' },
+      keymap = {
+        preset = 'enter',
+        ['<Tab>'] = false,
+        ['<S-Tab>'] = false,
+      },
       sources = {
         default = { 'lsp', 'path', 'snippets', 'buffer' },
       },
