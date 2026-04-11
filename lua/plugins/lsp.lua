@@ -21,28 +21,81 @@ return {
       "WhoIsSethDaniel/mason-tool-installer.nvim", -- 可选：自动安装 linter/formatter
     },
     config = function()
+      local capabilities = require("blink.cmp").get_lsp_capabilities()
+
       -- 开启 Mason
       require("mason").setup()
 
+      local mason_bin = vim.fn.stdpath("data") .. "/mason/bin"
+      local root_files = {
+        "tsconfig.json",
+        "jsconfig.json",
+        "package.json",
+        "pnpm-workspace.yaml",
+        ".git",
+      }
+      local vue_language_server_path = vim.fn.stdpath("data")
+        .. "/mason/packages/vue-language-server/node_modules/@vue/language-server"
+      local vue_plugin = {
+        name = "@vue/typescript-plugin",
+        location = vue_language_server_path,
+        languages = { "vue" },
+        configNamespace = "typescript",
+      }
+
       -- 配置需要自动安装的服务端（根据你的 JS/TS 需求）
       local servers = {
-        vtsls = {}, -- 替代传统的 tsserver，更现代的 TS 支持
-        lua_ls = {}, -- Lua 支持
+        vtsls = {
+          cmd = { mason_bin .. "/vtsls", "--stdio" },
+          capabilities = capabilities,
+          settings = {
+            vtsls = {
+              tsserver = {
+                globalPlugins = {
+                  vue_plugin,
+                },
+              },
+            },
+          },
+          filetypes = {
+            "javascript",
+            "javascriptreact",
+            "typescript",
+            "typescriptreact",
+            "vue",
+          },
+          root_markers = root_files,
+          single_file_support = true,
+        }, -- TypeScript/JavaScript，并支持 .vue 中的 TS
+        vue_ls = {
+          cmd = { mason_bin .. "/vue-language-server", "--stdio" },
+          capabilities = capabilities,
+          root_markers = root_files,
+          single_file_support = true,
+        }, -- Vue 3 模板/CSS/HTML 支持
+        lua_ls = {
+          capabilities = capabilities,
+        }, -- Lua 支持
         html = {},
         cssls = {},
         somesass_ls = {},
       }
 
+      for server_name, server in pairs(servers) do
+        server.capabilities = server.capabilities or capabilities
+        servers[server_name] = server
+      end
+
+      for server_name, server in pairs(servers) do
+        vim.lsp.config(server_name, server)
+      end
+
       require("mason-lspconfig").setup({
         ensure_installed = vim.tbl_keys(servers),
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- 这里的 setup 会把 LSP 关联到 Neovim
-            require("lspconfig")[server_name].setup(server)
-          end,
-        },
+        automatic_enable = false,
       })
+
+      vim.lsp.enable(vim.tbl_keys(servers))
 
       -- 自定义 LSP 快捷键（结合你的 Snacks.picker 提升体验）
       vim.api.nvim_create_autocmd("LspAttach", {
