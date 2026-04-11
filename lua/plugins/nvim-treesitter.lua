@@ -3,6 +3,7 @@ return {
   branch = 'master', 
   lazy = false, 
   build = ":TSUpdate",
+  main = "nvim-treesitter.configs", -- 告诉 lazy.nvim 自动调用 require("nvim-treesitter.configs").setup(opts)
   opts = {
     -- LazyVim config for treesitter
     indent = { enable = true }, ---@type lazyvim.TSFeat
