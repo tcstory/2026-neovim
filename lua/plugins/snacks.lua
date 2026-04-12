@@ -18,6 +18,29 @@ return {
     scope = { enabled = true },
     scroll = { enabled = true },
     statuscolumn = { enabled = true },
+    terminal = {
+      interactive = true,
+      start_insert = true,
+      auto_insert = true,
+      win = {
+        style = "float",
+        position = "float",
+        border = "rounded",
+        title = " Terminal ",
+        title_pos = "center",
+        width = 0.85,
+        height = 0.8,
+        backdrop = 60,
+        keys = {
+          term_hide = {
+            "<C-_>",
+            "hide",
+            mode = "t",
+            desc = "Hide Terminal",
+          },
+        },
+      },
+    },
     words = { enabled = true },
     styles = {
       notification = {
@@ -39,5 +62,6 @@ return {
     { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
     -- search
     { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
+    { "<C-_>", function() Snacks.terminal.toggle() end, desc = "Toggle Terminal" },
   }
 }
