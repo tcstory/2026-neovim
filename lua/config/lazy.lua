@@ -33,6 +33,13 @@ vim.opt.softtabstop = 2
 vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.cursorline = true
+vim.opt.fillchars = {
+  eob = " ",
+  fold = " ",
+  foldopen = "",
+  foldsep = " ",
+  foldclose = "",
+}
 
 -- Setup lazy.nvim
 require("lazy").setup({

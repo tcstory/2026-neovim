@@ -25,7 +25,12 @@ return {
       "WhoIsSethDaniel/mason-tool-installer.nvim", -- 可选：自动安装 linter/formatter
     },
     config = function()
-      local capabilities = require("blink.cmp").get_lsp_capabilities()
+      local capabilities = vim.lsp.protocol.make_client_capabilities()
+      capabilities.textDocument.completion.completionItem.snippetSupport = true
+      capabilities.textDocument.foldingRange = {
+        dynamicRegistration = false,
+        lineFoldingOnly = true,
+      }
       local vue2_target_warned = {}
 
       -- 开启 Mason
