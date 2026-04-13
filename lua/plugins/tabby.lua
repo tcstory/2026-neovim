@@ -4,8 +4,8 @@ return {
   keys = {
     { "<leader>tn", "<cmd>tabnew<cr>", desc = "New Tab" },
     { "<leader>tq", "<cmd>tabclose<cr>", desc = "Close Tab" },
-    { "<leader>th", "<cmd>tabprevious<cr>", desc = "Prev Tab" },
-    { "<leader>tl", "<cmd>tabnext<cr>", desc = "Next Tab" },
+    { "<leader>t[", "<cmd>tabprevious<cr>", desc = "Prev Tab" },
+    { "<leader>t]", "<cmd>tabnext<cr>", desc = "Next Tab" },
     { "<leader>to", "<cmd>tabonly<cr>", desc = "Only Tab" },
     { "<leader>tj", "<cmd>Tabby pick_window<cr>", desc = "Pick Window" },
   },
