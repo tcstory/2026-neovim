@@ -12,6 +12,6 @@ return {
     })
   end,
   keys = {
-    { "<leader>su", "<cmd>LocalHistoryCheck<cr>", desc = "Local History" },
+    { "<leader>su", "<cmd>LocalHistoryCheck<cr>", desc = "Undo History" },
   },
 }

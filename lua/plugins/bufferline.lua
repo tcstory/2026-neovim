@@ -4,8 +4,8 @@ return {
   event = "VeryLazy",
   dependencies = 'nvim-tree/nvim-web-devicons',
   keys = {
-    { "<leader>bn", "<cmd>BufferLineCycleNext<cr>", desc = "buffer line cycle next" },
-    { "<leader>bp", "<cmd>BufferLineCyclePrev<cr>", desc = "buffer line cycle prev" }, 
+    { "<leader>bn", "<cmd>BufferLineCycleNext<cr>", desc = "Next Buffer" },
+    { "<leader>bp", "<cmd>BufferLineCyclePrev<cr>", desc = "Prev Buffer" }, 
   },
   config = function()
     require('bufferline').setup({
