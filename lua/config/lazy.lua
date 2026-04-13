@@ -44,11 +44,11 @@ vim.opt.fillchars = {
 if vim.g.neovide then
     -- 核心配置：英文在前，中文在后，最后是字号
     -- 如果你的字体路径或名字有空格，这里用逗号隔开即可
-    vim.opt.guifont = "Comic Mono,LXGW WenKai:h12"
+    vim.opt.guifont = "BlexMono Nerd Font Mono,LXGW WenKai:h12"
 
     -- 针对霞鹜文楷的微调（可选）
     -- 1. 调整行高：文楷的字形偏大，如果觉得太挤，可以加一点间距
-    -- vim.opt.linespace = 2 
+    -- vim.opt.linespace = 2
 
     -- 2. 渲染平滑度：Neovide 独有设置
     vim.g.neovide_font_hinting = "full" -- 让字体看起来更锐利
