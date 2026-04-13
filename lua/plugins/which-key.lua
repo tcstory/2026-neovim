@@ -13,6 +13,7 @@ return {
       { "<leader>q", group = "Quit" },
       { "<leader>r", group = "Rename" },
       { "<leader>s", group = "Search" },
+      { "<leader>t", group = "Tabs" },
     },
   },
   keys = {
