@@ -10,6 +10,7 @@ return {
       { "<leader>f", group = "Find" },
       { "<leader>g", group = "Git" },
       { "<leader>n", group = "Notify" },
+      { "<leader>q", group = "Quit" },
       { "<leader>r", group = "Rename" },
       { "<leader>s", group = "Search" },
     },

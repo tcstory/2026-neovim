@@ -41,6 +41,8 @@ vim.opt.fillchars = {
   foldclose = "",
 }
 
+vim.keymap.set("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit Window" })
+
 local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
 
 vim.api.nvim_create_autocmd("InsertLeave", {
