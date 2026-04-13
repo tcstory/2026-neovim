@@ -36,7 +36,7 @@ return {
       -- 开启 Mason
       require("mason").setup()
 
-      local mason_bin = vim.fn.stdpath("data") .. "/mason/bin"
+      local node_bin = "/home/tcstory/.nvm/versions/node/v24.13.0/bin/node"
       local root_files = {
         "tsconfig.json",
         "jsconfig.json",
@@ -50,6 +50,9 @@ return {
       }
       local vue_language_server_path = vim.fn.stdpath("data")
         .. "/mason/packages/vue-language-server/node_modules/@vue/language-server"
+      local vtsls_main = vim.fn.stdpath("data")
+        .. "/mason/packages/vtsls/node_modules/@vtsls/language-server/dist/main.js"
+      local vue_ls_main = vue_language_server_path .. "/index.js"
       local vue_plugin = {
         name = "@vue/typescript-plugin",
         location = vue_language_server_path,
@@ -154,7 +157,7 @@ return {
       -- 配置需要自动安装的服务端（根据你的 JS/TS 需求）
       local servers = {
         vtsls = {
-          cmd = { mason_bin .. "/vtsls", "--stdio" },
+          cmd = { node_bin, vtsls_main, "--stdio" },
           capabilities = capabilities,
           settings = {
             vtsls = {
@@ -177,7 +180,7 @@ return {
           single_file_support = true,
         }, -- TypeScript/JavaScript，并支持 .vue 中的 TS
         vue_ls = {
-          cmd = { mason_bin .. "/vue-language-server", "--stdio" },
+          cmd = { node_bin, vue_ls_main, "--stdio" },
           capabilities = capabilities,
           -- Vue language tools 会优先从项目的 tsconfig/jsconfig 读取
           -- vueCompilerOptions.target；未显式配置时默认自动探测项目中的 Vue 版本。
