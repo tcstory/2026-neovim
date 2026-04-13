@@ -27,6 +27,7 @@ vim.opt.smartindent = true
 vim.opt.expandtab = true
 vim.opt.termguicolors = true
 vim.opt.updatetime = 1000
+vim.opt.autoread = false
 vim.opt.clipboard = vim.opt.clipboard + 'unnamedplus'
 vim.opt.tabstop = 2
 vim.opt.softtabstop = 2
@@ -44,6 +45,7 @@ vim.opt.fillchars = {
 vim.keymap.set("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit Window" })
 
 local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
+local checktime_group = vim.api.nvim_create_augroup("tcstory_checktime", { clear = true })
 
 vim.api.nvim_create_autocmd("InsertLeave", {
   group = autosave_group,
@@ -62,6 +64,16 @@ vim.api.nvim_create_autocmd("InsertLeave", {
     vim.api.nvim_buf_call(bufnr, function()
       vim.cmd("silent update")
     end)
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
+  group = checktime_group,
+  callback = function()
+    if vim.fn.mode() == "c" then
+      return
+    end
+    vim.cmd("checktime")
   end,
 })
 
