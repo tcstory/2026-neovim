@@ -41,6 +41,28 @@ vim.opt.fillchars = {
   foldclose = "",
 }
 
+local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
+
+vim.api.nvim_create_autocmd("InsertLeave", {
+  group = autosave_group,
+  callback = function(args)
+    local bufnr = args.buf
+    local name = vim.api.nvim_buf_get_name(bufnr)
+
+    if vim.bo[bufnr].buftype ~= "" or vim.bo[bufnr].modifiable == false or vim.bo[bufnr].readonly then
+      return
+    end
+
+    if name == "" or vim.bo[bufnr].modified == false then
+      return
+    end
+
+    vim.api.nvim_buf_call(bufnr, function()
+      vim.cmd("silent update")
+    end)
+  end,
+})
+
 if vim.g.neovide then
     -- 核心配置：英文在前，中文在后，最后是字号
     -- 如果你的字体路径或名字有空格，这里用逗号隔开即可
