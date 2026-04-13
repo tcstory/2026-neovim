@@ -52,6 +52,12 @@ if vim.g.neovide then
 
     -- 2. 渲染平滑度：Neovide 独有设置
     vim.g.neovide_font_hinting = "full" -- 让字体看起来更锐利
+
+    vim.keymap.set({ "n", "v" }, "<C-S-c>", '"+y', { desc = "Copy to Clipboard" })
+    vim.keymap.set("i", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
+    vim.keymap.set("c", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
+    vim.keymap.set("n", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
+    vim.keymap.set("v", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
 end
 
 -- Setup lazy.nvim
