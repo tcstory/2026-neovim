@@ -41,7 +41,7 @@ return {
         backdrop = 60,
         keys = {
           term_hide = {
-            "<C-_>",
+            "<C-\\>",
             "hide",
             mode = "t",
             desc = "Hide Terminal",
@@ -72,6 +72,6 @@ return {
     { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
     -- search
     { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
-    { "<C-_>", function() Snacks.terminal.toggle() end, desc = "Toggle Terminal" },
+    { "<C-\\>", function() Snacks.terminal.toggle() end, desc = "Toggle Terminal" },
   }
 }
