@@ -42,7 +42,6 @@ vim.opt.fillchars = {
   foldclose = "",
 }
 
-vim.keymap.set("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit Window" })
 vim.keymap.set("n", "<leader>w-", "<cmd>split<cr>", { desc = "Split Down" })
 vim.keymap.set("n", "<leader>w|", "<cmd>vsplit<cr>", { desc = "Split Right" })
 vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal Normal Mode" })
