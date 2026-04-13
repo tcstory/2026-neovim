@@ -10,7 +10,17 @@ return {
       sections = {
         { section = "header" },
         { section = "keys", gap = 1, padding = 1 },
-        { section = "projects", title = "Projects", icon = " ", padding = 1, limit = 5 },
+        {
+          section = "projects",
+          title = "Projects",
+          icon = " ",
+          padding = 1,
+          limit = 5,
+          action = function(dir)
+            vim.cmd.tcd(dir)
+            Snacks.dashboard.pick("files")
+          end,
+        },
         { section = "startup" },
       },
     },
