@@ -43,9 +43,13 @@ vim.opt.fillchars = {
 }
 
 vim.keymap.set("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit Window" })
+vim.keymap.set("n", "<leader>w-", "<cmd>split<cr>", { desc = "Split Down" })
+vim.keymap.set("n", "<leader>w|", "<cmd>vsplit<cr>", { desc = "Split Right" })
+vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal Normal Mode" })
 
 local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
 local checktime_group = vim.api.nvim_create_augroup("tcstory_checktime", { clear = true })
+local fcitx_terminal_group = vim.api.nvim_create_augroup("tcstory_fcitx_terminal", { clear = true })
 
 vim.api.nvim_create_autocmd("InsertLeave", {
   group = autosave_group,
@@ -74,6 +78,26 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
       return
     end
     vim.cmd("checktime")
+  end,
+})
+
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = fcitx_terminal_group,
+  pattern = "t:*",
+  callback = function()
+    if vim.bo.buftype == "terminal" and _G._Fcitx2en then
+      _G._Fcitx2en()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = fcitx_terminal_group,
+  pattern = "*:t",
+  callback = function()
+    if vim.bo.buftype == "terminal" and _G._Fcitx2NonLatin then
+      _G._Fcitx2NonLatin()
+    end
   end,
 })
 

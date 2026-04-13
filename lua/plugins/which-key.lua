@@ -14,6 +14,7 @@ return {
       { "<leader>r", group = "Rename" },
       { "<leader>s", group = "Search" },
       { "<leader>t", group = "Tabs" },
+      { "<leader>w", group = "Windows" },
     },
   },
   keys = {
