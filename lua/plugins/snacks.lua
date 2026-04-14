@@ -9,6 +9,28 @@ local function tab_or_global_cwd()
   return global_cwd
 end
 
+local function copy_current_file_path_from_tcd()
+  local file = vim.api.nvim_buf_get_name(0)
+
+  if file == "" then
+    vim.notify("Current buffer has no file path", vim.log.levels.WARN)
+    return
+  end
+
+  local cwd = tab_or_global_cwd()
+  local relative = vim.fs.relpath(cwd, file)
+  local path = relative or file
+
+  vim.fn.setreg("+", path)
+  vim.fn.setreg('"', path)
+
+  if relative then
+    vim.notify("Copied path: " .. path, vim.log.levels.INFO)
+  else
+    vim.notify("File is outside tcd, copied absolute path: " .. path, vim.log.levels.WARN)
+  end
+end
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -87,6 +109,7 @@ return {
     { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
     { "<leader>ff", function() Snacks.picker.files({ cwd = tab_or_global_cwd() }) end, desc = "Find Files" },
     { "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
+    { "<leader>fy", copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
     {
       "<leader>fc",
       function()
