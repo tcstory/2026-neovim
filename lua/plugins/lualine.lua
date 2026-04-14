@@ -2,16 +2,7 @@ return {
   'nvim-lualine/lualine.nvim',
   dependencies = { 'nvim-tree/nvim-web-devicons' },
   config = function()
-    local function tab_or_global_cwd()
-      local tab_cwd = vim.fn.getcwd(-1, 0)
-      local global_cwd = vim.fn.getcwd(-1, -1)
-
-      if tab_cwd ~= global_cwd then
-        return tab_cwd
-      end
-
-      return global_cwd
-    end
+    local utils = require("utils")
 
     local function shorten_path(path, max_len)
       if #path <= max_len then
@@ -56,7 +47,7 @@ return {
         return '[No Name]'
       end
 
-      local cwd = tab_or_global_cwd()
+      local cwd = utils.tab_or_global_cwd()
       local relative = vim.fs.relpath(cwd, file)
       local path = relative or vim.fn.fnamemodify(file, ':~')
       local winwidth = vim.fn.winwidth(0)
