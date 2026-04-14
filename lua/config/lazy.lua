@@ -49,8 +49,28 @@ vim.keymap.set("n", "]b", "<cmd>bnext<cr>", { desc = "Next Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprevious<cr>", { desc = "Previous Buffer" })
 vim.keymap.set("n", "<leader>bb", "<cmd>buffer#<cr>", { desc = "Last Buffer" })
 vim.keymap.set("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete Buffer" })
-vim.keymap.set("n", "<leader>bo", "<cmd>%bdelete|edit#|bdelete#<cr>", { desc = "Delete Other Buffers" })
-vim.keymap.set("n", "<leader>ba", "<cmd>bufdo bdelete<cr>", { desc = "Delete All Buffers" })
+vim.keymap.set("n", "<leader>bo", function()
+  local current = vim.api.nvim_get_current_buf()
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if bufnr ~= current and vim.api.nvim_buf_is_loaded(bufnr) then
+      local bo = vim.bo[bufnr]
+      if bo.buftype == "" then
+        pcall(vim.api.nvim_buf_delete, bufnr, {})
+      end
+    end
+  end
+end, { desc = "Delete Other Buffers" })
+vim.keymap.set("n", "<leader>ba", function()
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(bufnr) then
+      local bo = vim.bo[bufnr]
+      if bo.buftype == "" then
+        pcall(vim.api.nvim_buf_delete, bufnr, {})
+      end
+    end
+  end
+end, { desc = "Delete All Buffers" })
 vim.keymap.set("n", "<leader>bc", "<cmd>enew<cr>", { desc = "New Buffer" })
 vim.keymap.set("n", "<leader>bl", function() Snacks.picker.buffers() end, { desc = "List Buffers" })
 
