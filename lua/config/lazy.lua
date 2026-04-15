@@ -128,6 +128,19 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   end,
 })
 
+local function paste_with_reindent()
+  local before = vim.api.nvim_buf_line_count(0)
+
+  vim.cmd.normal({ '"+p', bang = true })
+
+  local after = vim.api.nvim_buf_line_count(0)
+  local inserted = math.max(after - before, 1)
+  local end_line = vim.api.nvim_win_get_cursor(0)[1]
+  local start_line = math.max(1, end_line - inserted + 1)
+
+  vim.cmd(string.format("%d,%dnormal! ==", start_line, end_line))
+end
+
 if vim.g.neovide then
     -- 核心配置：英文在前，中文在后，最后是字号
     -- 如果你的字体路径或名字有空格，这里用逗号隔开即可
@@ -141,9 +154,14 @@ if vim.g.neovide then
     vim.g.neovide_font_hinting = "full" -- 让字体看起来更锐利
 
     vim.keymap.set({ "n", "v" }, "<C-S-c>", '"+y', { desc = "Copy to Clipboard" })
-    vim.keymap.set("i", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
+    vim.keymap.set("i", "<C-S-v>", function()
+      local esc = vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
+      vim.api.nvim_feedkeys(esc, "n", false)
+      paste_with_reindent()
+      vim.cmd.startinsert()
+    end, { desc = "Paste from Clipboard" })
     vim.keymap.set("c", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
-    vim.keymap.set("n", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
+    vim.keymap.set("n", "<C-S-v>", paste_with_reindent, { desc = "Paste from Clipboard" })
     vim.keymap.set("v", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
 end
 

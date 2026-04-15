@@ -75,26 +75,26 @@ return {
     { "<leader>fe", function() Snacks.explorer({ cwd = utils.tab_or_global_cwd() }) end, desc = "File Explorer" },
     -- find
     { "<leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
-    { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
-    { "<leader>ff", function() Snacks.picker.files({ cwd = utils.tab_or_global_cwd() }) end, desc = "Find Files" },
+    -- { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
+    -- { "<leader>ff", function() Snacks.picker.files({ cwd = utils.tab_or_global_cwd() }) end, desc = "Find Files" },
     { "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
     { "<leader>fy", utils.copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
-    {
-      "<leader>fc",
-      function()
-        local cwd
-
-        if vim.fn.haslocaldir() == 1 then
-          cwd = vim.fn.getcwd(0)
-        elseif vim.fn.getcwd(-1, 0) ~= vim.fn.getcwd(-1, -1) then
-          cwd = vim.fn.getcwd(-1, 0)
-        else
-          cwd = vim.fn.getcwd(-1, -1)
-        end
-        Snacks.picker.files({ cwd = cwd })
-      end,
-      desc = "Files Current",
-    },
+    -- {
+    --   "<leader>fc",
+    --   function()
+    --     local cwd
+    --
+    --     if vim.fn.haslocaldir() == 1 then
+    --       cwd = vim.fn.getcwd(0)
+    --     elseif vim.fn.getcwd(-1, 0) ~= vim.fn.getcwd(-1, -1) then
+    --       cwd = vim.fn.getcwd(-1, 0)
+    --     else
+    --       cwd = vim.fn.getcwd(-1, -1)
+    --     end
+    --     Snacks.picker.files({ cwd = cwd })
+    --   end,
+    --   desc = "Files Current",
+    -- },
     -- Grep
     { "<leader>sb", function() Snacks.picker.lines() end, desc = "Lines" }, -- 在当前 buffer 中查询
     { "<leader>sB", function() Snacks.picker.grep_buffers() end, desc = "Grep Buffers" }, -- 在所有打开的 buffer 中查询
