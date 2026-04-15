@@ -14,7 +14,8 @@ return {
     local menu_items = {
       { name = "复制当前文件地址", cmd = utils.copy_current_file_path_from_tcd, rtxt = "yf" },
       { name = "复制当前文件所在目录", cmd = utils.copy_current_file_dir_from_tcd, rtxt = "yd" },
-      { name = "Diff This", cmd = function() require("gitsigns").diffthis() end, rtxt = "gd" },
+      { name = "Diff This", cmd = utils.diff_current_file, rtxt = "HEAD" },
+      { name = "Diff File Last Change", cmd = utils.diff_current_file_last_change, rtxt = "Last" },
     }
 
     vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
