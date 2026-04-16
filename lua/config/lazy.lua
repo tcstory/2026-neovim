@@ -2,6 +2,7 @@
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
+
   local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
   if vim.v.shell_error ~= 0 then
     vim.api.nvim_echo({
@@ -128,18 +129,40 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   end,
 })
 
-local function paste_with_reindent()
-  local before = vim.api.nvim_buf_line_count(0)
-
-  vim.cmd.normal({ '"+p', bang = true })
-
-  local after = vim.api.nvim_buf_line_count(0)
-  local inserted = math.max(after - before, 1)
-  local end_line = vim.api.nvim_win_get_cursor(0)[1]
-  local start_line = math.max(1, end_line - inserted + 1)
-
-  vim.cmd(string.format("%d,%dnormal! ==", start_line, end_line))
+local function put_with_reindent(keys)
+  vim.cmd.normal({ keys, bang = true })
+  local view = vim.fn.winsaveview()
+  vim.cmd([[silent! normal! `[v`]=]])
+  vim.fn.winrestview(view)
 end
+
+local function put_keys(keys)
+  local register = vim.v.register
+  local count = vim.v.count
+  local prefix = ""
+
+  if register ~= nil and register ~= "" and register ~= '"' then
+    prefix = prefix .. '"' .. register
+  end
+
+  if count > 0 then
+    prefix = prefix .. count
+  end
+
+  return prefix .. keys
+end
+
+local function paste_with_reindent()
+  put_with_reindent('"+p')
+end
+
+vim.keymap.set("n", "p", function()
+  put_with_reindent(put_keys("p"))
+end, { desc = "Paste with Reindent" })
+
+vim.keymap.set("n", "P", function()
+  put_with_reindent(put_keys("P"))
+end, { desc = "Paste Before with Reindent" })
 
 local function paste_to_terminal()
   local text = vim.fn.getreg("+")
@@ -172,9 +195,11 @@ if vim.g.neovide then
     vim.keymap.set({ "n", "v" }, "<C-S-c>", '"+y', { desc = "Copy to Clipboard" })
     vim.keymap.set("i", "<C-S-v>", function()
       local esc = vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
-      vim.api.nvim_feedkeys(esc, "n", false)
-      paste_with_reindent()
-      vim.cmd.startinsert()
+      vim.api.nvim_feedkeys(esc, "nx", false)
+      vim.schedule(function()
+        paste_with_reindent()
+        vim.cmd.startinsert()
+      end)
     end, { desc = "Paste from Clipboard" })
     vim.keymap.set("c", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
     vim.keymap.set("n", "<C-S-v>", paste_with_reindent, { desc = "Paste from Clipboard" })
