@@ -20,12 +20,24 @@ return {
       tail = "TabLine",
     }
 
+    local function tab_cwd_name(tab)
+      local cwd = vim.fn.getcwd(-1, tab.number())
+      local name = vim.fn.fnamemodify(cwd, ":t")
+
+      if name == "" then
+        name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+      end
+
+      return name
+    end
+
     require("tabby").setup({
       line = function(line)
-        local cwd = vim.fn.fnamemodify(vim.fn.getcwd(-1, 0), ":t")
-        if cwd == "" then
-          cwd = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
-        end
+        local cwd = tab_cwd_name({
+          number = function()
+            return vim.api.nvim_tabpage_get_number(vim.api.nvim_get_current_tabpage())
+          end,
+        })
 
         return {
           {
@@ -36,11 +48,7 @@ return {
             local hl = tab.is_current() and theme.current or theme.tab
             local win = tab.current_win()
             local buf = win.buf()
-            local title = tab.name()
-
-            if title == "" then
-              title = win.buf_name()
-            end
+            local title = tab_cwd_name(tab)
 
             return {
               " ",
