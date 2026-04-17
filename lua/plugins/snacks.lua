@@ -1,5 +1,16 @@
 local utils = require("utils")
 
+local function open_or_focus_explorer()
+  local explorer = Snacks.picker.get({ source = "explorer" })[1]
+
+  if explorer then
+    explorer:focus()
+    return
+  end
+
+  Snacks.explorer({ cwd = utils.tab_or_global_cwd() })
+end
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -73,6 +84,7 @@ return {
     { "<leader>:", function() Snacks.picker.command_history() end, desc = "Command History" },
     { "<leader>n", function() Snacks.picker.notifications() end, desc = "Notifications" },
     { "<leader>fe", function() Snacks.explorer({ cwd = utils.tab_or_global_cwd() }) end, desc = "File Explorer" },
+    { "<leader>1", open_or_focus_explorer, desc = "Open or Focus Explorer" },
     -- find
     { "<leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
     -- { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
