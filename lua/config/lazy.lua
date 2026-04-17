@@ -49,7 +49,44 @@ vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal Normal Mode
 vim.keymap.set("n", "]b", "<cmd>bnext<cr>", { desc = "Next Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprevious<cr>", { desc = "Previous Buffer" })
 vim.keymap.set("n", "<leader>bb", "<cmd>buffer#<cr>", { desc = "Last Buffer" })
-vim.keymap.set("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete Buffer" })
+local function delete_buffer_keep_windows(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  local wins = vim.fn.win_findbuf(bufnr)
+  local replacement = vim.fn.bufnr("#")
+
+  if replacement == bufnr or replacement == -1 or vim.fn.buflisted(replacement) == 0 then
+    replacement = nil
+
+    for _, candidate in ipairs(vim.api.nvim_list_bufs()) do
+      if candidate ~= bufnr and vim.fn.buflisted(candidate) == 1 then
+        replacement = candidate
+        break
+      end
+    end
+  end
+
+  if not replacement then
+    vim.cmd("enew")
+    replacement = vim.api.nvim_get_current_buf()
+  end
+
+  for _, win in ipairs(wins) do
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_set_buf(win, replacement)
+    end
+  end
+
+  vim.api.nvim_buf_delete(bufnr, {})
+end
+
+vim.keymap.set("n", "<leader>bd", function()
+  delete_buffer_keep_windows()
+end, { desc = "Delete Buffer" })
 vim.keymap.set("n", "<leader>bo", function()
   local current = vim.api.nvim_get_current_buf()
 
