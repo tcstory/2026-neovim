@@ -1,5 +1,6 @@
 return {
-  "esmuellert/codediff.nvim",
+  dir = "/home/tcstory/Documents/Coding/lua/codediff.nvim",
+  name = "codediff.nvim",
   cmd = "CodeDiff",
   opts = {
     explorer = {
