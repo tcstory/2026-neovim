@@ -81,7 +81,7 @@ return {
   },
   keys = {
     -- Top Pickers & Explorer
-    { "<leader>:", function() Snacks.picker.command_history() end, desc = "Command History" },
+    -- { "<leader>:", function() Snacks.picker.command_history() end, desc = "Command History" },
     { "<leader>n", function() Snacks.picker.notifications() end, desc = "Notifications" },
     { "<leader>fe", function() Snacks.explorer({ cwd = utils.tab_or_global_cwd() }) end, desc = "File Explorer" },
     { "<leader>1", open_or_focus_explorer, desc = "Open or Focus Explorer" },
@@ -90,7 +90,7 @@ return {
     -- { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
     -- { "<leader>ff", function() Snacks.picker.files({ cwd = utils.tab_or_global_cwd() }) end, desc = "Find Files" },
     { "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
-    { "<leader>fy", utils.copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
+    -- { "<leader>fy", utils.copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
     -- {
     --   "<leader>fc",
     --   function()
