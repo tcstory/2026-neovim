@@ -112,7 +112,7 @@ return {
     { "<leader>sB", function() Snacks.picker.grep_buffers() end, desc = "Grep Buffers" }, -- 在所有打开的 buffer 中查询
     { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
     -- search
-    { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
+    -- { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
     { "<C-\\>", function() Snacks.terminal.toggle() end, desc = "Toggle Terminal" },
   }
 }
