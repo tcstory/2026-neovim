@@ -87,7 +87,7 @@ return {
     { "<leader>1", open_or_focus_explorer, desc = "Open or Focus Explorer" },
     -- find
     { "<leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
-    -- { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
+    { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
     -- { "<leader>ff", function() Snacks.picker.files({ cwd = utils.tab_or_global_cwd() }) end, desc = "Find Files" },
     { "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
     -- { "<leader>fy", utils.copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
