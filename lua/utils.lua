@@ -83,6 +83,37 @@ function M.copy_to_clipboard(value)
   vim.fn.setreg('"', value)
 end
 
+local function notify_copied_path(kind, path, is_relative)
+  if is_relative then
+    vim.notify("Copied " .. kind .. ": " .. path, vim.log.levels.INFO)
+  else
+    vim.notify(kind:gsub("^%l", string.upper) .. " is outside tcd, copied absolute path: " .. path, vim.log.levels.WARN)
+  end
+end
+
+function M.copy_path_from_tcd(path)
+  if not path or path == "" then
+    vim.notify("No path to copy", vim.log.levels.WARN)
+    return
+  end
+
+  local value, is_relative = M.path_from_tcd(path)
+  M.copy_to_clipboard(value)
+  notify_copied_path("path", value, is_relative)
+end
+
+function M.copy_dir_from_tcd(path)
+  if not path or path == "" then
+    vim.notify("No directory to copy", vim.log.levels.WARN)
+    return
+  end
+
+  local target = vim.fn.isdirectory(path) == 1 and path or vim.fs.dirname(path)
+  local value, is_relative = M.path_from_tcd(target)
+  M.copy_to_clipboard(value)
+  notify_copied_path("directory", value, is_relative)
+end
+
 function M.copy_current_file_path_from_tcd()
   local path, is_relative = M.current_file_path_from_tcd()
 
@@ -91,12 +122,7 @@ function M.copy_current_file_path_from_tcd()
   end
 
   M.copy_to_clipboard(path)
-
-  if is_relative then
-    vim.notify("Copied path: " .. path, vim.log.levels.INFO)
-  else
-    vim.notify("File is outside tcd, copied absolute path: " .. path, vim.log.levels.WARN)
-  end
+  notify_copied_path("path", path, is_relative)
 end
 
 function M.copy_current_file_dir_from_tcd()
@@ -107,12 +133,7 @@ function M.copy_current_file_dir_from_tcd()
   end
 
   M.copy_to_clipboard(path)
-
-  if is_relative then
-    vim.notify("Copied directory: " .. path, vim.log.levels.INFO)
-  else
-    vim.notify("Directory is outside tcd, copied absolute path: " .. path, vim.log.levels.WARN)
-  end
+  notify_copied_path("directory", path, is_relative)
 end
 
 function M.diff_current_file()

@@ -24,6 +24,27 @@ return {
       end
     end
 
+    local function get_explorer_item_at_mouse(explorer, mouse)
+      if not explorer or not explorer.list or not explorer.list.win or mouse.winid ~= explorer.list.win.win then
+        return nil
+      end
+
+      local idx = explorer.list:row2idx(mouse.line)
+      if idx < 1 or idx > explorer.list:count() then
+        return nil
+      end
+
+      return explorer:resolve(explorer.list:get(idx))
+    end
+
+    local function dir_for_item(item)
+      if not item or not item.file then
+        return nil
+      end
+
+      return item.dir and item.file or vim.fs.dirname(item.file)
+    end
+
     local file_menu_items = {
       { name = "复制当前文件地址", cmd = utils.copy_current_file_path_from_tcd, rtxt = "yf" },
       { name = "复制当前文件所在目录", cmd = utils.copy_current_file_dir_from_tcd, rtxt = "yd" },
@@ -47,8 +68,16 @@ return {
       end
 
       if explorer then
-        local target_dir = explorer:dir()
+        local item = get_explorer_item_at_mouse(explorer, mouse) or explorer:current()
+        local target_dir = dir_for_item(item) or explorer:dir()
         local explorer_menu_items = {
+          {
+            name = "复制目录地址",
+            cmd = function()
+              utils.copy_dir_from_tcd(target_dir)
+            end,
+            rtxt = "yd",
+          },
           {
             name = "搜索此目录中的文件内容",
             cmd = function()

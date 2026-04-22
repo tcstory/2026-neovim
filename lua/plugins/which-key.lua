@@ -2,6 +2,10 @@ return {
   "folke/which-key.nvim",
   event = "VeryLazy",
   opts = {
+    -- Avoid auto-popup in Visual mode when right-click context menus momentarily enter selection state.
+    triggers = {
+      { "<auto>", mode = "nso" },
+    },
     spec = {
       { "g", group = "Goto" },
       { "<leader>", group = "Leader" },
