@@ -50,7 +50,7 @@ return {
       { name = "复制当前文件所在目录", cmd = utils.copy_current_file_dir_from_tcd, rtxt = "yd" },
       { name = "Git Blame", cmd = function() vim.cmd("Gitsigns blame") end, rtxt = "git" },
       { name = "Diff This", cmd = utils.diff_current_file, rtxt = "HEAD" },
-      { name = "Diff File Last Change", cmd = utils.diff_current_file_last_change, rtxt = "Last" },
+      { name = "File History", cmd = function() vim.cmd("CodeDiff history %") end, rtxt = "Hist" },
     }
 
     vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
