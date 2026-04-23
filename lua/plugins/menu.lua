@@ -25,6 +25,31 @@ return {
       end
     end
 
+    local function picker_menu_action(source, open)
+      return menu_action(function()
+        open()
+        vim.schedule(function()
+          local pickers = Snacks.picker.get({ source = source })
+          local picker = pickers[#pickers]
+
+          if not picker or picker.closed then
+            return
+          end
+
+          picker:focus("input", { show = true })
+          vim.schedule(function()
+            if picker.input
+              and picker.input.win
+              and picker.input.win.win
+              and vim.api.nvim_win_is_valid(picker.input.win.win) then
+              vim.api.nvim_set_current_win(picker.input.win.win)
+              vim.cmd("startinsert!")
+            end
+          end)
+        end)
+      end)
+    end
+
     local function get_explorer_picker(winid)
       for _, picker in ipairs(Snacks.picker.get({ source = "explorer", tab = false })) do
         local list_win = picker.layout
@@ -94,14 +119,14 @@ return {
           },
           {
             name = "搜索此目录中的文件内容",
-            cmd = menu_action(function()
+            cmd = picker_menu_action("grep", function()
               Snacks.picker.grep({ cwd = target_dir })
             end),
             rtxt = "grep",
           },
           {
             name = "搜索此目录中的文件名",
-            cmd = menu_action(function()
+            cmd = picker_menu_action("files", function()
               Snacks.picker.files({ cwd = target_dir })
             end),
             rtxt = "files",
