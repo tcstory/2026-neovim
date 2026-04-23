@@ -117,23 +117,26 @@ local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear =
 local checktime_group = vim.api.nvim_create_augroup("tcstory_checktime", { clear = true })
 local fcitx_terminal_group = vim.api.nvim_create_augroup("tcstory_fcitx_terminal", { clear = true })
 
-vim.api.nvim_create_autocmd("InsertLeave", {
+local function autosave_buffer(bufnr)
+  local name = vim.api.nvim_buf_get_name(bufnr)
+
+  if vim.bo[bufnr].buftype ~= "" or vim.bo[bufnr].modifiable == false or vim.bo[bufnr].readonly then
+    return
+  end
+
+  if name == "" or vim.bo[bufnr].modified == false then
+    return
+  end
+
+  vim.api.nvim_buf_call(bufnr, function()
+    vim.cmd("silent update")
+  end)
+end
+
+vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
   group = autosave_group,
   callback = function(args)
-    local bufnr = args.buf
-    local name = vim.api.nvim_buf_get_name(bufnr)
-
-    if vim.bo[bufnr].buftype ~= "" or vim.bo[bufnr].modifiable == false or vim.bo[bufnr].readonly then
-      return
-    end
-
-    if name == "" or vim.bo[bufnr].modified == false then
-      return
-    end
-
-    vim.api.nvim_buf_call(bufnr, function()
-      vim.cmd("silent update")
-    end)
+    autosave_buffer(args.buf)
   end,
 })
 
