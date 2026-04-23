@@ -49,7 +49,7 @@ vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal Normal Mode
 vim.keymap.set("n", "q", "<Nop>", { silent = true, desc = "Disable Macro Recording" })
 vim.keymap.set("n", "]b", "<cmd>bnext<cr>", { desc = "Next Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprevious<cr>", { desc = "Previous Buffer" })
-vim.keymap.set("n", "<leader>bb", "<cmd>buffer#<cr>", { desc = "Last Buffer" })
+vim.keymap.set("n", "<leader>tq", "<cmd>tabclose<cr>", { desc = "Close Tab" })
 local function delete_buffer_keep_windows(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
