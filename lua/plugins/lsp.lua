@@ -239,6 +239,7 @@ return {
 
           -- 悬浮文档
           vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts("Hover"))
+          vim.keymap.set("n", "gl", vim.diagnostic.open_float, bufopts("Line Diagnostics"))
         end,
       })
     end,

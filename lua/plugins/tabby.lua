@@ -1,74 +1,74 @@
 return {
-  "nanozuki/tabby.nvim",
-  event = "VimEnter",
-  keys = {
-    { "<leader>tn", "<cmd>tabnew<cr>", desc = "New Tab" },
-    { "<leader>tq", "<cmd>tabclose<cr>", desc = "Close Tab" },
-    { "<leader>t[", "<cmd>tabprevious<cr>", desc = "Prev Tab" },
-    { "<leader>t]", "<cmd>tabnext<cr>", desc = "Next Tab" },
-    { "<leader>to", "<cmd>tabonly<cr>", desc = "Only Tab" },
-    { "<leader>tj", "<cmd>Tabby pick_window<cr>", desc = "Pick Window" },
-  },
-  config = function()
-    vim.o.showtabline = 2
-
-    local theme = {
-      fill = "TabLineFill",
-      head = "TabLine",
-      current = "TabLineSel",
-      tab = "TabLine",
-      tail = "TabLine",
-    }
-
-    local function tab_cwd_name(tab)
-      local cwd = vim.fn.getcwd(-1, tab.number())
-      local name = vim.fn.fnamemodify(cwd, ":t")
-
-      if name == "" then
-        name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
-      end
-
-      return name
-    end
-
-    require("tabby").setup({
-      line = function(line)
-        local cwd = tab_cwd_name({
-          number = function()
-            return vim.api.nvim_tabpage_get_number(vim.api.nvim_get_current_tabpage())
-          end,
-        })
-
-        return {
-          {
-            { " tabs ", hl = theme.head },
-            hl = theme.head,
-          },
-          line.tabs().foreach(function(tab)
-            local hl = tab.is_current() and theme.current or theme.tab
-            local win = tab.current_win()
-            local buf = win.buf()
-            local title = tab_cwd_name(tab)
-
-            return {
-              " ",
-              tab.in_jump_mode() and tab.jump_key() or tab.number(),
-              " ",
-              title,
-              buf.is_changed() and " ●" or "",
-              " ",
-              hl = hl,
-              margin = " ",
-            }
-          end),
-          line.spacer(),
-          {
-            " " .. cwd .. " ",
-            hl = theme.tail,
-          },
-          hl = theme.fill,
-        }
-      end,
-    })
-  end,
+  -- "nanozuki/tabby.nvim",
+  -- event = "VimEnter",
+  -- keys = {
+  --   { "<leader>tn", "<cmd>tabnew<cr>", desc = "New Tab" },
+  --   { "<leader>tq", "<cmd>tabclose<cr>", desc = "Close Tab" },
+  --   { "<leader>t[", "<cmd>tabprevious<cr>", desc = "Prev Tab" },
+  --   { "<leader>t]", "<cmd>tabnext<cr>", desc = "Next Tab" },
+  --   { "<leader>to", "<cmd>tabonly<cr>", desc = "Only Tab" },
+  --   { "<leader>tj", "<cmd>Tabby pick_window<cr>", desc = "Pick Window" },
+  -- },
+  -- config = function()
+  --   vim.o.showtabline = 2
+  --
+  --   local theme = {
+  --     fill = "TabLineFill",
+  --     head = "TabLine",
+  --     current = "TabLineSel",
+  --     tab = "TabLine",
+  --     tail = "TabLine",
+  --   }
+  --
+  --   local function tab_cwd_name(tab)
+  --     local cwd = vim.fn.getcwd(-1, tab.number())
+  --     local name = vim.fn.fnamemodify(cwd, ":t")
+  --
+  --     if name == "" then
+  --       name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+  --     end
+  --
+  --     return name
+  --   end
+  --
+  --   require("tabby").setup({
+  --     line = function(line)
+  --       local cwd = tab_cwd_name({
+  --         number = function()
+  --           return vim.api.nvim_tabpage_get_number(vim.api.nvim_get_current_tabpage())
+  --         end,
+  --       })
+  --
+  --       return {
+  --         {
+  --           { " tabs ", hl = theme.head },
+  --           hl = theme.head,
+  --         },
+  --         line.tabs().foreach(function(tab)
+  --           local hl = tab.is_current() and theme.current or theme.tab
+  --           local win = tab.current_win()
+  --           local buf = win.buf()
+  --           local title = tab_cwd_name(tab)
+  --
+  --           return {
+  --             " ",
+  --             tab.in_jump_mode() and tab.jump_key() or tab.number(),
+  --             " ",
+  --             title,
+  --             buf.is_changed() and " ●" or "",
+  --             " ",
+  --             hl = hl,
+  --             margin = " ",
+  --           }
+  --         end),
+  --         line.spacer(),
+  --         {
+  --           " " .. cwd .. " ",
+  --           hl = theme.tail,
+  --         },
+  --         hl = theme.fill,
+  --       }
+  --     end,
+  --   })
+  -- end,
 }
