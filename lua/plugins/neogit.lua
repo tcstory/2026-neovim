@@ -5,7 +5,7 @@ return {
     "nvim-lua/plenary.nvim",         -- required
 
     -- Only one of these is needed.
-    "esmuellert/codediff.nvim",      -- optional
+    "dlyongemallo/diffview.nvim",
 
     -- For a custom log pager
     "m00qek/baleia.nvim",            -- optional
@@ -23,7 +23,7 @@ return {
       codediff = true,
       snacks = true,
     },
-    diff_viewer = "codediff",
+    diff_viewer = "diffview",
   },
   config = function(_, opts)
     require("neogit").setup(opts)
