@@ -6,9 +6,23 @@ return {
   },
   config = function()
     local utils = require("utils")
+    local menu_utils = require("menu.utils")
 
     local function is_normal_file_buffer(buf)
       return vim.bo[buf].buftype == "" and vim.api.nvim_buf_get_name(buf) ~= ""
+    end
+
+    local function menu_action(cmd)
+      return function()
+        menu_utils.delete_old_menus()
+        vim.schedule(function()
+          if type(cmd) == "string" then
+            vim.cmd(cmd)
+          else
+            cmd()
+          end
+        end)
+      end
     end
 
     local function get_explorer_picker(winid)
@@ -46,11 +60,11 @@ return {
     end
 
     local file_menu_items = {
-      { name = "复制当前文件地址", cmd = utils.copy_current_file_path_from_tcd, rtxt = "yf" },
-      { name = "复制当前文件所在目录", cmd = utils.copy_current_file_dir_from_tcd, rtxt = "yd" },
-      { name = "Git Blame", cmd = function() vim.cmd("Gitsigns blame") end, rtxt = "git" },
-      { name = "Diff This", cmd = utils.diff_current_file, rtxt = "HEAD" },
-      { name = "File History", cmd = function() vim.cmd("CodeDiff history %") end, rtxt = "Hist" },
+      { name = "复制当前文件地址", cmd = menu_action(utils.copy_current_file_path_from_tcd), rtxt = "yf" },
+      { name = "复制当前文件所在目录", cmd = menu_action(utils.copy_current_file_dir_from_tcd), rtxt = "yd" },
+      { name = "Git Blame", cmd = menu_action("Gitsigns blame"), rtxt = "git" },
+      { name = "Diff This", cmd = menu_action(utils.diff_current_file), rtxt = "HEAD" },
+      { name = "File History", cmd = menu_action("CodeDiff history %"), rtxt = "Hist" },
     }
 
     vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
@@ -73,23 +87,23 @@ return {
         local explorer_menu_items = {
           {
             name = "复制目录地址",
-            cmd = function()
+            cmd = menu_action(function()
               utils.copy_dir_from_tcd(target_dir)
-            end,
+            end),
             rtxt = "yd",
           },
           {
             name = "搜索此目录中的文件内容",
-            cmd = function()
+            cmd = menu_action(function()
               Snacks.picker.grep({ cwd = target_dir })
-            end,
+            end),
             rtxt = "grep",
           },
           {
             name = "搜索此目录中的文件名",
-            cmd = function()
+            cmd = menu_action(function()
               Snacks.picker.files({ cwd = target_dir })
-            end,
+            end),
             rtxt = "files",
           },
         }
