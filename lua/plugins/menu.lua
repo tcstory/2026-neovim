@@ -226,6 +226,19 @@ return {
       end
     end
 
+    local function file_history_action()
+      return menu_action(function()
+        local file = vim.api.nvim_buf_get_name(0)
+        if file == "" or vim.bo.buftype ~= "" then
+          vim.notify("File History 仅支持普通文件缓冲区", vim.log.levels.WARN)
+          return
+        end
+
+        require("lazy").load({ plugins = { "diffview.nvim" } })
+        vim.cmd("DiffviewFileHistory %")
+      end)
+    end
+
     local function picker_menu_action(source, open)
       return menu_action(function()
         open()
@@ -290,7 +303,7 @@ return {
       { name = "复制当前文件所在目录", cmd = menu_action(utils.copy_current_file_dir_from_tcd), rtxt = "yd" },
       { name = "Git Blame", cmd = menu_action("Gitsigns blame"), rtxt = "git" },
       { name = "Diff This", cmd = menu_action(utils.diff_current_file), rtxt = "HEAD" },
-      { name = "File History", cmd = menu_action("CodeDiff history %"), rtxt = "Hist" },
+      { name = "File History", cmd = file_history_action(), rtxt = "Hist" },
     }
 
     vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
