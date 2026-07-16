@@ -113,7 +113,7 @@ end, { desc = "Delete All Buffers" })
 vim.keymap.set("n", "<leader>bc", "<cmd>enew<cr>", { desc = "New Buffer" })
 vim.keymap.set("n", "<leader>bl", function() Snacks.picker.buffers() end, { desc = "List Buffers" })
 
-local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
+-- local autosave_group = vim.api.nvim_create_augroup("tcstory_autosave", { clear = true })
 local checktime_group = vim.api.nvim_create_augroup("tcstory_checktime", { clear = true })
 local fcitx_terminal_group = vim.api.nvim_create_augroup("tcstory_fcitx_terminal", { clear = true })
 
@@ -133,12 +133,12 @@ local function autosave_buffer(bufnr)
   end)
 end
 
-vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
-  group = autosave_group,
-  callback = function(args)
-    autosave_buffer(args.buf)
-  end,
-})
+-- vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
+--   group = autosave_group,
+--   callback = function(args)
+--     autosave_buffer(args.buf)
+--   end,
+-- })
 
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
   group = checktime_group,
