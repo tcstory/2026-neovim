@@ -170,10 +170,6 @@ local function put_keys(keys)
   return prefix .. keys
 end
 
-local function paste_with_reindent()
-  put_with_reindent('"+p')
-end
-
 vim.keymap.set("n", "p", function()
   put_with_reindent(put_keys("p"))
 end, { desc = "Paste with Reindent" })
@@ -182,48 +178,7 @@ vim.keymap.set("n", "P", function()
   put_with_reindent(put_keys("P"))
 end, { desc = "Paste Before with Reindent" })
 
-local function paste_to_terminal()
-  local text = vim.fn.getreg("+")
-  local job = vim.b.terminal_job_id
-
-  if text == "" then
-    return
-  end
-
-  if not job then
-    vim.notify("Current buffer is not an active terminal", vim.log.levels.WARN)
-    return
-  end
-
-  vim.api.nvim_chan_send(job, text)
-end
-
-if vim.g.neovide then
-    -- 核心配置：英文在前，中文在后，最后是字号
-    -- 如果你的字体路径或名字有空格，这里用逗号隔开即可
-    vim.opt.guifont = "BlexMono Nerd Font Mono,LXGW WenKai:h12"
-
-    -- 针对霞鹜文楷的微调（可选）
-    -- 1. 调整行高：文楷的字形偏大，如果觉得太挤，可以加一点间距
-    -- vim.opt.linespace = 2
-
-    -- 2. 渲染平滑度：Neovide 独有设置
-    vim.g.neovide_font_hinting = "full" -- 让字体看起来更锐利
-
-    vim.keymap.set({ "n", "v" }, "<C-S-c>", '"+y', { desc = "Copy to Clipboard" })
-    vim.keymap.set("i", "<C-S-v>", function()
-      local esc = vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
-      vim.api.nvim_feedkeys(esc, "nx", false)
-      vim.schedule(function()
-        paste_with_reindent()
-        vim.cmd.startinsert()
-      end)
-    end, { desc = "Paste from Clipboard" })
-    vim.keymap.set("c", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
-    vim.keymap.set("n", "<C-S-v>", paste_with_reindent, { desc = "Paste from Clipboard" })
-    vim.keymap.set("v", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
-    vim.keymap.set("t", "<C-S-v>", paste_to_terminal, { desc = "Paste from Clipboard" })
-end
+require("config.neovide")
 
 -- Setup lazy.nvim
 require("lazy").setup({
