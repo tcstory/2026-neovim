@@ -2,16 +2,35 @@ return {
   -- 1. 为 Neovim Lua 开发提供增强（写插件必备）
   { "folke/lazydev.nvim", ft = "lua", opts = {} },
   {
-    'saghen/blink.cmp',
-    version = '1.*',
+    "saghen/blink.cmp",
+    version = "1.*",
     opts = {
+      snippets = { preset = "luasnip" },
       keymap = {
-        preset = 'enter',
-        ['<Tab>'] = false,
-        ['<S-Tab>'] = false,
+        preset = "enter",
+        ["<Tab>"] = false,
+        ["<S-Tab>"] = false,
+      },
+      completion = {
+        menu = {
+          draw = {
+            columns = {
+              { "kind_icon" },
+              { "label", "label_description", gap = 1 },
+              { "source_name" },
+            },
+          },
+        },
       },
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'buffer' },
+        default = { "lazydev", "lsp", "path", "snippets", "buffer" },
+        providers = {
+          lazydev = {
+            name = "LazyDev",
+            module = "lazydev.integrations.blink",
+            score_offset = 100,
+          },
+        },
       },
     },
   },
@@ -20,34 +39,25 @@ return {
   {
     "neovim/nvim-lspconfig",
     dependencies = {
+      "saghen/blink.cmp",
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
-      "WhoIsSethDaniel/mason-tool-installer.nvim", -- 可选：自动安装 linter/formatter
     },
     config = function()
-      local capabilities = vim.lsp.protocol.make_client_capabilities()
-      capabilities.textDocument.completion.completionItem.snippetSupport = true
-      capabilities.textDocument.foldingRange = {
-        dynamicRegistration = false,
-        lineFoldingOnly = true,
-      }
+      local capabilities = require("blink.cmp").get_lsp_capabilities({
+        textDocument = {
+          foldingRange = {
+            dynamicRegistration = false,
+            lineFoldingOnly = true,
+          },
+        },
+      })
       local vue2_target_warned = {}
 
       -- 开启 Mason
       require("mason").setup()
 
       local node_bin = "/home/tcstory/.nvm/versions/node/v24.13.0/bin/node"
-      local root_files = {
-        "tsconfig.json",
-        "jsconfig.json",
-        "package.json",
-        "vue.config.js",
-        "vue.config.ts",
-      }
-      local workspace_root_files = {
-        "pnpm-workspace.yaml",
-        ".git",
-      }
       local vue_language_server_path = vim.fn.stdpath("data")
         .. "/mason/packages/vue-language-server/node_modules/@vue/language-server"
       local vtsls_main = vim.fn.stdpath("data")
@@ -59,6 +69,13 @@ return {
         languages = { "vue" },
         configNamespace = "typescript",
       }
+
+      local function web_project_root(bufnr, on_dir)
+        local package_root = vim.fs.root(bufnr, "package.json")
+        local config_root = vim.fs.root(bufnr, { "tsconfig.json", "jsconfig.json" })
+
+        on_dir(package_root or config_root or vim.fn.getcwd())
+      end
 
       local function find_upward(bufnr, names)
         local path = vim.api.nvim_buf_get_name(bufnr)
@@ -141,25 +158,18 @@ return {
         )
       end
 
-      local function nearest_project_root(bufnr, on_dir)
-        local root = vim.fs.root(bufnr, root_files)
-        if root then
-          on_dir(root)
-          return
-        end
-
-        local workspace_root = vim.fs.root(bufnr, workspace_root_files)
-        if workspace_root then
-          on_dir(workspace_root)
-        end
-      end
-
       -- 配置需要自动安装的服务端（根据你的 JS/TS 需求）
       local servers = {
         vtsls = {
           cmd = { node_bin, vtsls_main, "--stdio" },
           capabilities = capabilities,
           settings = {
+            typescript = {
+              tsserver = {
+                maxTsServerMemory = 8192,
+                nodePath = node_bin,
+              },
+            },
             vtsls = {
               tsserver = {
                 globalPlugins = {
@@ -175,33 +185,25 @@ return {
             "typescriptreact",
             "vue",
           },
-          root_dir = nearest_project_root,
-          root_markers = root_files,
-          single_file_support = true,
+          root_dir = web_project_root,
         }, -- TypeScript/JavaScript，并支持 .vue 中的 TS
         vue_ls = {
           cmd = { node_bin, vue_ls_main, "--stdio" },
           capabilities = capabilities,
           -- Vue language tools 会优先从项目的 tsconfig/jsconfig 读取
           -- vueCompilerOptions.target；未显式配置时默认自动探测项目中的 Vue 版本。
-          root_dir = nearest_project_root,
-          root_markers = root_files,
-          single_file_support = true,
+          root_dir = web_project_root,
         }, -- Vue 2/3 模板/CSS/HTML 支持，版本由项目配置决定
         lua_ls = {
           capabilities = capabilities,
         }, -- Lua 支持
-        html = {},
-        cssls = {},
-        somesass_ls = {},
+        html = { root_dir = web_project_root },
+        cssls = { root_dir = web_project_root },
+        somesass_ls = { root_dir = web_project_root },
       }
 
       for server_name, server in pairs(servers) do
         server.capabilities = server.capabilities or capabilities
-        servers[server_name] = server
-      end
-
-      for server_name, server in pairs(servers) do
         vim.lsp.config(server_name, server)
       end
 
@@ -212,8 +214,8 @@ return {
 
       vim.lsp.enable(vim.tbl_keys(servers))
 
-      vim.api.nvim_create_autocmd({ "BufEnter", "FileType" }, {
-        pattern = "*.vue",
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "vue",
         callback = function(args)
           maybe_warn_vue2_target(args.buf)
         end,
@@ -222,7 +224,6 @@ return {
       -- 自定义 LSP 快捷键（结合你的 Snacks.picker 提升体验）
       vim.api.nvim_create_autocmd("LspAttach", {
         callback = function(args)
-          local client = vim.lsp.get_client_by_id(args.data.client_id)
           local function bufopts(desc)
             return { buffer = args.buf, desc = desc }
           end
