@@ -234,7 +234,7 @@ return {
           return
         end
 
-        require("lazy").load({ plugins = { "diffview.nvim" } })
+        require("lazy").load({ plugins = { "diffview-plus.nvim" } })
         vim.cmd("DiffviewFileHistory %")
       end)
     end
