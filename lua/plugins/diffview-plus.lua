@@ -11,6 +11,19 @@ return {
   -- },
   config = function ()
     require("diffview").setup({
+      file_history_panel = {
+        log_options = {
+          git = {
+            single_file = {
+              follow = true,
+              diff_merges = "off",
+            },
+            multi_file = {
+              diff_merges = "off",
+            },
+          },
+        },
+      },
       view = {
         merge_tool = {
           layout = "diff4_mixed",
