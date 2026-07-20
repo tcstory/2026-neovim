@@ -178,7 +178,7 @@ vim.keymap.set("n", "P", function()
   put_with_reindent(put_keys("P"))
 end, { desc = "Paste Before with Reindent" })
 
-require("config.neovide")
+-- require("config.neovide")
 
 -- Setup lazy.nvim
 require("lazy").setup({
