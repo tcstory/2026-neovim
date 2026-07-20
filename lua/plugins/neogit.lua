@@ -5,7 +5,7 @@ return {
     "nvim-lua/plenary.nvim",         -- required
 
     -- Only one of these is needed.
-    "dlyongemallo/diffview.nvim",
+    "dlyongemallo/diffview-plus.nvim",
 
     -- For a custom log pager
     "m00qek/baleia.nvim",            -- optional
