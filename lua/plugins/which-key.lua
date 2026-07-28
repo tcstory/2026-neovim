@@ -9,6 +9,7 @@ return {
     spec = {
       { "g", group = "Goto" },
       { "<leader>", group = "Leader" },
+      { "<leader>a", group = "AI" },
       { "<leader>b", group = "Buffer" },
       { "<leader>c", group = "Code" },
       { "<leader>f", group = "Find" },
