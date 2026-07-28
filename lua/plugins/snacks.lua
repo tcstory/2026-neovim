@@ -11,6 +11,66 @@ local function open_or_focus_explorer()
   Snacks.explorer({ cwd = utils.tab_or_global_cwd() })
 end
 
+local function switch_terminal(self, count)
+  local terminal = vim.b[self.buf].snacks_terminal
+
+  if terminal and terminal.id == count then
+    return
+  end
+
+  self:hide()
+  vim.schedule(function()
+    local target = Snacks.terminal.focus(nil, { count = count })
+
+    vim.schedule(function()
+      if target and vim.api.nvim_get_current_buf() == target.buf then
+        vim.cmd("stopinsert")
+      end
+    end)
+  end)
+end
+
+local function terminal_keys()
+  local keys = {
+    term_hide = {
+      "<C-\\>",
+      "hide",
+      mode = "t",
+      desc = "Hide Terminal",
+    },
+    term_normal = {
+      "<Esc>",
+      function(self)
+        self.esc_timer = self.esc_timer or (vim.uv or vim.loop).new_timer()
+
+        if self.esc_timer:is_active() then
+          self.esc_timer:stop()
+          vim.cmd("stopinsert")
+        else
+          self.esc_timer:start(500, 0, function() end)
+          return "<Esc>"
+        end
+      end,
+      mode = "t",
+      expr = true,
+      desc = "Double escape to normal mode",
+    },
+  }
+
+  for count = 1, 9 do
+    keys["terminal_" .. count] = {
+      tostring(count),
+      function(self)
+        switch_terminal(self, count)
+      end,
+      mode = "n",
+      desc = "Switch to Terminal " .. count,
+    }
+  end
+
+  return keys
+end
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -70,16 +130,9 @@ return {
         height = 0.8,
         backdrop = 60,
         wo = {
-          winbar = "%=%{mode(1) ==# 't' ? 'TERM INPUT' : 'TERM NORMAL'}%=",
+          winbar = "%=%{printf('Terminal %d · %d active · %s', exists('b:snacks_terminal') ? b:snacks_terminal.id : 1, luaeval('#Snacks.terminal.list()'), mode(1) ==# 't' ? 'INPUT' : 'NORMAL')}%=",
         },
-        keys = {
-          term_hide = {
-            "<C-\\>",
-            "hide",
-            mode = "t",
-            desc = "Hide Terminal",
-          },
-        },
+        keys = terminal_keys(),
       },
     },
     words = { enabled = true },
