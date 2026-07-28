@@ -1,3 +1,13 @@
+local function mode()
+  local current_mode = require('lualine.utils.mode').get_mode()
+
+  if vim.bo.buftype == 'terminal' then
+    return current_mode == 'TERMINAL' and 'TERM INPUT' or 'TERM ' .. current_mode
+  end
+
+  return current_mode
+end
+
 return {
   'nvim-lualine/lualine.nvim',
   dependencies = { 'nvim-tree/nvim-web-devicons' },
@@ -5,6 +15,7 @@ return {
     require('lualine').setup({
       sections = {
         lualine_a = {
+          mode,
           {
             'lsp_status',
             icon = '', -- f013

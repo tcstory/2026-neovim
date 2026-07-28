@@ -69,6 +69,9 @@ return {
         width = 0.85,
         height = 0.8,
         backdrop = 60,
+        wo = {
+          winbar = "%=%{mode(1) ==# 't' ? 'TERM INPUT' : 'TERM NORMAL'}%=",
+        },
         keys = {
           term_hide = {
             "<C-\\>",
