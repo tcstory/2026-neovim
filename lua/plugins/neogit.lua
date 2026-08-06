@@ -13,9 +13,10 @@ return {
     -- Only one of these is needed.
     "folke/snacks.nvim",             -- optional
   },
-  cmd = "Neogit",
+  cmd = { "Neogit", "NeogitLogRefs" },
   keys = {
-    { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" }
+    { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" },
+    { "<leader>gL", ":NeogitLogRefs ", desc = "Neogit log selected refs" },
   },
   opts = {
     graph_style = "unicode",
@@ -27,6 +28,40 @@ return {
   },
   config = function(_, opts)
     require("neogit").setup(opts)
+
+    vim.api.nvim_create_user_command("NeogitLogRefs", function(command_opts)
+      local invalid_refs = vim.tbl_filter(function(ref)
+        local result = vim.system({ "git", "rev-parse", "--verify", "--quiet", ref .. "^{commit}" }, {
+          text = true,
+        }):wait()
+
+        return result.code ~= 0
+      end, command_opts.fargs)
+
+      if #invalid_refs > 0 then
+        vim.notify(
+          "NeogitLogRefs: invalid git ref(s): " .. table.concat(invalid_refs, ", "),
+          vim.log.levels.ERROR
+        )
+        return
+      end
+
+      local args = vim.list_extend(vim.deepcopy(command_opts.fargs), {
+        "--graph",
+        "--decorate",
+        "--color",
+      })
+
+      require("neogit").action("log", "log_current", args)()
+    end, {
+      nargs = "+",
+      desc = "Open a Neogit graph for the specified refs",
+      complete = function(arg_lead)
+        return vim.tbl_filter(function(ref)
+          return vim.startswith(ref, arg_lead)
+        end, require("neogit.lib.git").refs.list_branches())
+      end,
+    })
 
     local unicode_graph = require("neogit.lib.graph.unicode")
     if not unicode_graph._user_lane_colors_applied then
