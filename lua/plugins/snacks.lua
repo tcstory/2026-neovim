@@ -71,6 +71,97 @@ local function terminal_keys()
   return keys
 end
 
+local function open_in_place_menu(title, items)
+  local mouse = vim.fn.getmousepos()
+  local lines = {}
+  local max_width = vim.fn.strdisplaywidth(title) + 4
+  for _, item in ipairs(items) do
+    local text = "  " .. item.text .. "  "
+    table.insert(lines, text)
+    max_width = math.max(max_width, vim.fn.strdisplaywidth(text))
+  end
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].filetype = "snacks_explorer_menu"
+
+  local height = #lines
+  local width = max_width
+  local row = 0
+  local col = 1
+  if mouse.screenrow and mouse.screenrow + height + 2 > vim.o.lines then
+    row = -height - 1
+  end
+  if mouse.screencol and mouse.screencol + width + 2 > vim.o.columns then
+    col = -width
+  end
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "mouse",
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = "minimal",
+    border = "rounded",
+    title = title ~= "" and (" " .. title .. " ") or nil,
+    title_pos = "center",
+  })
+
+  vim.wo[win].cursorline = true
+  vim.wo[win].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:Visual"
+
+  local closed = false
+  local function close_menu()
+    if closed then
+      return
+    end
+    closed = true
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_close(win, true)
+    end
+    if vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end
+  end
+
+  local function select_index(idx)
+    if idx >= 1 and idx <= #items then
+      local choice = items[idx]
+      close_menu()
+      if choice and choice.action then
+        vim.schedule(choice.action)
+      end
+    end
+  end
+
+  vim.keymap.set("n", "<CR>", function()
+    local cursor = vim.api.nvim_win_get_cursor(win)
+    select_index(cursor[1])
+  end, { buffer = buf, silent = true, nowait = true })
+
+  vim.keymap.set("n", "<LeftMouse>", function()
+    local m = vim.fn.getmousepos()
+    if m.winid == win then
+      select_index(m.line)
+    else
+      close_menu()
+    end
+  end, { buffer = buf, silent = true, nowait = true })
+
+  vim.keymap.set("n", "<RightMouse>", close_menu, { buffer = buf, silent = true, nowait = true })
+  vim.keymap.set("n", "<Esc>", close_menu, { buffer = buf, silent = true, nowait = true })
+  vim.keymap.set("n", "q", close_menu, { buffer = buf, silent = true, nowait = true })
+
+  vim.api.nvim_create_autocmd("BufLeave", {
+    buffer = buf,
+    once = true,
+    callback = close_menu,
+  })
+end
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -106,10 +197,108 @@ return {
     },
     picker = {
       enabled = true,
+      actions = {
+        explorer_context_menu = function(picker)
+          local mouse = vim.fn.getmousepos()
+          if mouse.winid == picker.list.win.win then
+            picker.list.win:focus()
+            local idx = picker.list:row2idx(mouse.line)
+            if idx >= 1 and idx <= picker.list:count() then
+              picker.list:_move(idx, true, true)
+            end
+          end
+
+          local item = picker:current()
+          if not item then
+            return
+          end
+
+          local target_dir = picker:dir()
+          local target_path = item.file
+          local name = item.file and vim.fs.basename(item.file) or target_dir
+
+          local menu_items = {
+            {
+              text = "搜索此目录内容 (Grep)",
+              action = function()
+                Snacks.picker.grep({ cwd = target_dir })
+              end,
+            },
+            {
+              text = "在此目录查找文件 (Files)",
+              action = function()
+                Snacks.picker.files({ cwd = target_dir })
+              end,
+            },
+            {
+              text = "复制相对路径",
+              action = function()
+                utils.copy_path_from_tcd(target_path)
+              end,
+            },
+            {
+              text = "复制目录相对路径",
+              action = function()
+                utils.copy_dir_from_tcd(target_dir)
+              end,
+            },
+            {
+              text = "新建文件 / 目录 (Add)",
+              action = function()
+                picker:action("explorer_add")
+              end,
+            },
+            {
+              text = "重命名 (Rename)",
+              action = function()
+                picker:action("explorer_rename")
+              end,
+            },
+            {
+              text = "删除 / 移到回收站 (Delete)",
+              action = function()
+                picker:action("explorer_del")
+              end,
+            },
+            {
+              text = "复制 (Copy)",
+              action = function()
+                picker:action("explorer_copy")
+              end,
+            },
+            {
+              text = "剪切 / 移动 (Move)",
+              action = function()
+                picker:action("explorer_move")
+              end,
+            },
+            {
+              text = "粘贴到此目录 (Paste)",
+              action = function()
+                picker:action("explorer_paste")
+              end,
+            },
+          }
+
+          open_in_place_menu(name, menu_items)
+        end,
+      },
       sources = {
         explorer = {
           hidden = true,
           ignored = true,
+          win = {
+            list = {
+              keys = {
+                ["<RightMouse>"] = "explorer_context_menu",
+              },
+            },
+            input = {
+              keys = {
+                ["<RightMouse>"] = "explorer_context_menu",
+              },
+            },
+          },
         },
       },
     },
