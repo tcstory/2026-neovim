@@ -71,7 +71,22 @@ local function terminal_keys()
   return keys
 end
 
+local function cancel_active_inputs()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_is_valid(win) then
+      local buf = vim.api.nvim_win_get_buf(win)
+      if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "snacks_input" then
+        vim.api.nvim_win_call(win, function()
+          vim.cmd("stopinsert")
+          vim.cmd("normal q")
+        end)
+      end
+    end
+  end
+end
+
 local function open_in_place_menu(title, items)
+  cancel_active_inputs()
   local mouse = vim.fn.getmousepos()
   local lines = {}
   local max_width = vim.fn.strdisplaywidth(title) + 4
@@ -166,6 +181,33 @@ return {
   "folke/snacks.nvim",
   priority = 1000,
   lazy = false,
+  init = function()
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = "snacks_input",
+      group = vim.api.nvim_create_augroup("tcstory_snacks_input_autoclose", { clear = true }),
+      callback = function(ev)
+        vim.api.nvim_create_autocmd("BufLeave", {
+          buffer = ev.buf,
+          once = true,
+          callback = function()
+            vim.schedule(function()
+              if vim.api.nvim_buf_is_valid(ev.buf) then
+                for _, win in ipairs(vim.api.nvim_list_wins()) do
+                  if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == ev.buf then
+                    vim.api.nvim_win_call(win, function()
+                      vim.cmd("stopinsert")
+                      vim.cmd("normal q")
+                    end)
+                    break
+                  end
+                end
+              end
+            end)
+          end,
+        })
+      end,
+    })
+  end,
   ---@type snacks.Config
   opts = {
     bigfile = { enabled = true },
@@ -199,6 +241,7 @@ return {
       enabled = true,
       actions = {
         explorer_context_menu = function(picker)
+          cancel_active_inputs()
           local mouse = vim.fn.getmousepos()
           if mouse.winid == picker.list.win.win then
             picker.list.win:focus()
