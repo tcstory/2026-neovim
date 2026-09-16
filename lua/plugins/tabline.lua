@@ -1,6 +1,6 @@
 return {
   name = "native-tabline",
-  dir = vim.fn.stdpath("config"),
+  dir = vim.fn.stdpath("config") .. "/lua/tabline",
   event = "VeryLazy",
   keys = {
     { "<leader>ta", "<cmd>tabnew<cr>", desc = "New Tab (Workspace)" },

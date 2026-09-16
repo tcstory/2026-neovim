@@ -73,18 +73,21 @@ end
 
 local function setup_file_menu()
   vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
-    local mouse = vim.fn.getmousepos()
-    if mouse.winid == 0 or mouse.line == 0 or mouse.screenrow <= 1 then
-      return
-    end
-
-    if not vim.api.nvim_win_is_valid(mouse.winid) then
-      return
-    end
-
     vim.cmd.exec('"normal! \\<RightMouse>"')
 
-    local winid = mouse.winid
+    local mouse = vim.fn.getmousepos()
+
+    -- 检查 Tabline 是否可见（showtabline=2 或 showtabline=1且多于1个tabpage）
+    local tabline_visible = (vim.o.showtabline == 2)
+      or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1)
+
+    -- 如果 Tabline 可见且点击在第 1 行（Tabline 所在行），不弹出编辑器菜单
+    if tabline_visible and mouse.screenrow == 1 then
+      return
+    end
+
+    local winid = (mouse.winid ~= 0 and vim.api.nvim_win_is_valid(mouse.winid)) and mouse.winid
+      or vim.api.nvim_get_current_win()
     local buf = vim.api.nvim_win_get_buf(winid)
 
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "gitsigns-blame" then
