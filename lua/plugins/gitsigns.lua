@@ -1,6 +1,15 @@
 return {
   "lewis6991/gitsigns.nvim",
   event = { "BufReadPre", "BufNewFile" },
+  init = function()
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = "gitsigns-blame",
+      callback = function(ev)
+        vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
+        vim.keymap.set("n", "<Esc>", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
+      end,
+    })
+  end,
   opts = {},
   keys = {
     {

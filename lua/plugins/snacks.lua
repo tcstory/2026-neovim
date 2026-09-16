@@ -102,6 +102,18 @@ return {
       end,
     })
   end,
+  config = function(_, opts)
+    require("snacks").setup(opts)
+
+    -- 点击行号/状态列时仅定位光标，不触发代码折叠 (去除默认的 za 行为)
+    require("snacks.statuscolumn").click_fold = function()
+      local pos = vim.fn.getmousepos()
+      if pos.winid > 0 and vim.api.nvim_win_is_valid(pos.winid) and pos.line > 0 then
+        vim.api.nvim_set_current_win(pos.winid)
+        pcall(vim.api.nvim_win_set_cursor, pos.winid, { pos.line, 0 })
+      end
+    end
+  end,
   ---@type snacks.Config
   opts = {
     bigfile = { enabled = true },
