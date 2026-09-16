@@ -4,8 +4,9 @@ return {
   {
     "saghen/blink.cmp",
     version = "1.*",
+    dependencies = { "rafamadriz/friendly-snippets" },
     opts = {
-      snippets = { preset = "luasnip" },
+      snippets = { preset = "default" },
       keymap = {
         preset = "enter",
         ["<Tab>"] = false,

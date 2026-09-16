@@ -73,11 +73,19 @@ end
 
 local function setup_file_menu()
   vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
+    local mouse = vim.fn.getmousepos()
+    if mouse.winid == 0 or mouse.line == 0 or mouse.screenrow <= 1 then
+      return
+    end
+
+    if not vim.api.nvim_win_is_valid(mouse.winid) then
+      return
+    end
+
     vim.cmd.exec('"normal! \\<RightMouse>"')
 
-    local mouse = vim.fn.getmousepos()
-    local buf = mouse.winid ~= 0 and vim.api.nvim_win_get_buf(mouse.winid) or vim.api.nvim_get_current_buf()
-    local winid = mouse.winid ~= 0 and mouse.winid or vim.api.nvim_get_current_win()
+    local winid = mouse.winid
+    local buf = vim.api.nvim_win_get_buf(winid)
 
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "gitsigns-blame" then
       if vim.api.nvim_win_is_valid(winid) then

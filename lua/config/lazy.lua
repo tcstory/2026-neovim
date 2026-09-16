@@ -43,73 +43,29 @@ vim.opt.fillchars = {
   foldclose = "",
 }
 
+-- 原生 Treesitter 折叠 (Neovim 0.10+)
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldtext = ""
+vim.opt.foldlevel = 99
+vim.opt.foldlevelstart = 99
+vim.opt.foldenable = true
+
+vim.keymap.set("n", "zR", function() vim.opt.foldlevel = 99 end, { desc = "Open All Folds" })
+vim.keymap.set("n", "zM", function() vim.opt.foldlevel = 0 end, { desc = "Close All Folds" })
+
 vim.keymap.set("n", "<leader>w-", "<cmd>split<cr>", { desc = "Split Down" })
 vim.keymap.set("n", "<leader>w|", "<cmd>vsplit<cr>", { desc = "Split Right" })
 vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal Normal Mode" })
 vim.keymap.set("n", "q", "<Nop>", { silent = true, desc = "Disable Macro Recording" })
 vim.keymap.set("n", "]b", "<cmd>bnext<cr>", { desc = "Next Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprevious<cr>", { desc = "Previous Buffer" })
+vim.keymap.set("n", "<leader>bn", "<cmd>bnext<cr>", { desc = "Next Buffer" })
+vim.keymap.set("n", "<leader>bp", "<cmd>bprevious<cr>", { desc = "Previous Buffer" })
 vim.keymap.set("n", "<leader>tq", "<cmd>tabclose<cr>", { desc = "Close Tab" })
-local function delete_buffer_keep_windows(bufnr)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return
-  end
-
-  local wins = vim.fn.win_findbuf(bufnr)
-  local replacement = vim.fn.bufnr("#")
-
-  if replacement == bufnr or replacement == -1 or vim.fn.buflisted(replacement) == 0 then
-    replacement = nil
-
-    for _, candidate in ipairs(vim.api.nvim_list_bufs()) do
-      if candidate ~= bufnr and vim.fn.buflisted(candidate) == 1 then
-        replacement = candidate
-        break
-      end
-    end
-  end
-
-  if not replacement then
-    vim.cmd("enew")
-    replacement = vim.api.nvim_get_current_buf()
-  end
-
-  for _, win in ipairs(wins) do
-    if vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_set_buf(win, replacement)
-    end
-  end
-
-  vim.api.nvim_buf_delete(bufnr, {})
-end
-
-vim.keymap.set("n", "<leader>bd", function()
-  delete_buffer_keep_windows()
-end, { desc = "Delete Buffer" })
-vim.keymap.set("n", "<leader>bo", function()
-  local current = vim.api.nvim_get_current_buf()
-
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if bufnr ~= current and vim.api.nvim_buf_is_loaded(bufnr) then
-      local bo = vim.bo[bufnr]
-      if bo.buftype == "" then
-        pcall(vim.api.nvim_buf_delete, bufnr, {})
-      end
-    end
-  end
-end, { desc = "Delete Other Buffers" })
-vim.keymap.set("n", "<leader>ba", function()
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(bufnr) then
-      local bo = vim.bo[bufnr]
-      if bo.buftype == "" then
-        pcall(vim.api.nvim_buf_delete, bufnr, {})
-      end
-    end
-  end
-end, { desc = "Delete All Buffers" })
+vim.keymap.set("n", "<leader>bd", function() Snacks.bufdelete() end, { desc = "Delete Buffer" })
+vim.keymap.set("n", "<leader>bo", function() Snacks.bufdelete.other() end, { desc = "Delete Other Buffers" })
+vim.keymap.set("n", "<leader>ba", function() Snacks.bufdelete.all() end, { desc = "Delete All Buffers" })
 vim.keymap.set("n", "<leader>bc", "<cmd>enew<cr>", { desc = "New Buffer" })
 vim.keymap.set("n", "<leader>bl", function() Snacks.picker.buffers() end, { desc = "List Buffers" })
 vim.keymap.set("n", "<leader>bs", "<cmd>update<cr>", { desc = "Save Buffer" })

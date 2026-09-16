@@ -7,9 +7,6 @@ return {
     -- Only one of these is needed.
     "dlyongemallo/diffview-plus.nvim",
 
-    -- For a custom log pager
-    "m00qek/baleia.nvim",            -- optional
-
     -- Only one of these is needed.
     "folke/snacks.nvim",             -- optional
   },
