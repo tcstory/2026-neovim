@@ -11,23 +11,272 @@ local function open_or_focus_explorer()
   Snacks.explorer({ cwd = utils.tab_or_global_cwd() })
 end
 
-local function switch_terminal(self, count)
-  local terminal = vim.b[self.buf].snacks_terminal
+_G._terminal_names = _G._terminal_names or { [1] = "AI", [2] = "Shell" }
 
-  if terminal and terminal.id == count then
-    return
+local function get_terminal_display_name(id)
+  local name = _G._terminal_names[id]
+  if name and name ~= "" then
+    return name
+  end
+  if id == 1 then
+    return "AI"
+  elseif id == 2 then
+    return "Shell"
+  else
+    return "Term " .. id
+  end
+end
+
+_G.switch_terminal_by_id = function(target_id)
+  vim.schedule(function()
+    local target = Snacks.terminal.get(nil, { count = target_id })
+    if not target then
+      return
+    end
+
+    -- 1. 先展示并聚焦目标终端
+    target:show():focus()
+    vim.cmd("startinsert")
+
+    -- 2. 同步关闭其他已打开的终端窗口（避免先关后开产生的空白闪烁）
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t ~= target and t:win_valid() then
+        t:hide()
+      end
+    end
+  end)
+end
+
+_G.create_new_terminal = function()
+  vim.schedule(function()
+    local active_ids = {}
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+        if info and info.id then
+          active_ids[info.id] = true
+        end
+      end
+    end
+
+    local next_id = 1
+    while active_ids[next_id] do
+      next_id = next_id + 1
+    end
+
+    _G.switch_terminal_by_id(next_id)
+  end)
+end
+
+_G.hide_terminal_win = function()
+  vim.schedule(function()
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t:win_valid() then
+        t:hide()
+      end
+    end
+  end)
+end
+
+_G.cycle_terminal = function(direction)
+  vim.schedule(function()
+    local cur_buf = vim.api.nvim_get_current_buf()
+    local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
+    local cur_id = cur_term and cur_term.id or 1
+
+    local active_ids = {}
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+        if info and info.id then
+          table.insert(active_ids, info.id)
+        end
+      end
+    end
+    table.sort(active_ids)
+
+    if #active_ids <= 1 then
+      return
+    end
+
+    local cur_idx = 1
+    for i, id in ipairs(active_ids) do
+      if id == cur_id then
+        cur_idx = i
+        break
+      end
+    end
+
+    local next_idx = cur_idx + direction
+    if next_idx > #active_ids then
+      next_idx = 1
+    elseif next_idx < 1 then
+      next_idx = #active_ids
+    end
+
+    _G.switch_terminal_by_id(active_ids[next_idx])
+  end)
+end
+
+_G.rename_current_terminal = function(target_id)
+  local id = target_id
+  if not id then
+    local cur_buf = vim.api.nvim_get_current_buf()
+    local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
+    id = cur_term and cur_term.id or 1
   end
 
-  self:hide()
-  vim.schedule(function()
-    local target = Snacks.terminal.focus(nil, { count = count })
+  local cur_name = get_terminal_display_name(id)
 
-    vim.schedule(function()
-      if target and vim.api.nvim_get_current_buf() == target.buf then
-        vim.cmd("stopinsert")
+  vim.schedule(function()
+    vim.ui.input({
+      prompt = "重命名终端 (" .. id .. "): ",
+      default = cur_name,
+    }, function(input)
+      if input and vim.trim(input) ~= "" then
+        _G._terminal_names[id] = vim.trim(input)
+        vim.cmd("redrawtabline")
+        vim.cmd("redrawstatus")
       end
+      vim.schedule(function()
+        local buf = vim.api.nvim_get_current_buf()
+        if vim.bo[buf].buftype == "terminal" then
+          vim.cmd("startinsert")
+        end
+      end)
     end)
   end)
+end
+
+_G.close_terminal_by_id = function(target_id)
+  vim.schedule(function()
+    local to_close = nil
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+        if info and info.id == target_id then
+          to_close = t
+          break
+        end
+      end
+    end
+
+    if not to_close then
+      return
+    end
+
+    local was_win = to_close:win_valid()
+    local buf = to_close.buf
+
+    -- 彻底删除 terminal buffer，终止底层进程并自动触发 BufWipeout 清理
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end
+
+    -- 如果关闭的是当前可见的终端，自动切到剩余的终端
+    if was_win then
+      local remaining_ids = {}
+      for _, t in ipairs(Snacks.terminal.list()) do
+        if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+          local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+          if info and info.id and info.id ~= target_id then
+            table.insert(remaining_ids, info.id)
+          end
+        end
+      end
+      table.sort(remaining_ids)
+      if #remaining_ids > 0 then
+        _G.switch_terminal_by_id(remaining_ids[1])
+      end
+    end
+  end)
+end
+
+_G.on_terminal_tab_click = function(id, _, button)
+  vim.schedule(function()
+    if button == "r" then
+      local utils = require("utils")
+      local name = get_terminal_display_name(id)
+      utils.open_in_place_menu("终端: " .. name, {
+        {
+          text = "切换到此终端",
+          shortcut = "Enter",
+          action = function()
+            _G.switch_terminal_by_id(id)
+          end,
+        },
+        {
+          text = "重命名此终端",
+          shortcut = "r",
+          action = function()
+            _G.rename_current_terminal(id)
+          end,
+        },
+        {
+          text = "关闭/终止此终端",
+          shortcut = "x",
+          action = function()
+            _G.close_terminal_by_id(id)
+          end,
+        },
+      })
+    elseif button == "m" then
+      _G.close_terminal_by_id(id)
+    else
+      _G.switch_terminal_by_id(id)
+    end
+  end)
+end
+
+_G.render_terminal_winbar = function()
+  local cur_buf = vim.api.nvim_get_current_buf()
+  local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
+  local cur_id = cur_term and cur_term.id or 1
+
+  local active_ids = {}
+  local seen = {}
+  for _, t in ipairs(Snacks.terminal.list()) do
+    if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+      local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+      if info and info.id and not seen[info.id] then
+        table.insert(active_ids, info.id)
+        seen[info.id] = true
+      end
+    end
+  end
+  if not seen[cur_id] then
+    table.insert(active_ids, cur_id)
+  end
+  table.sort(active_ids)
+
+  local s = " "
+  for _, id in ipairs(active_ids) do
+    local is_sel = (id == cur_id)
+    local name = get_terminal_display_name(id)
+    local icon = (id == 1 or name:lower():find("ai")) and "󰚩 " or " "
+
+    local hl = is_sel and "%#TabLineSel#" or "%#TabLine#"
+    s = s .. hl
+    s = s .. "%" .. id .. "@v:lua.on_terminal_tab_click@"
+    s = s .. " " .. icon .. id .. ": " .. name .. " "
+    s = s .. "%T"
+    s = s .. "%#Normal# "
+  end
+
+  -- 新建终端加号按钮 (+)
+  s = s .. "%@v:lua.create_new_terminal@%#TabLineNew#  + %T%#Normal#"
+
+  -- 靠右对齐部分
+  s = s .. "%="
+
+  -- 模式提示
+  local mode_text = (vim.fn.mode(1) == "t") and "INPUT" or "NORMAL"
+  s = s .. "%#Comment#[" .. mode_text .. "] "
+
+  -- 收起/隐藏按钮 ()
+  s = s .. "%@v:lua.hide_terminal_win@%#TabLineCloseSel#  收起 %T "
+
+  return s
 end
 
 local function terminal_keys()
@@ -37,6 +286,38 @@ local function terminal_keys()
       "hide",
       mode = "t",
       desc = "Hide Terminal",
+    },
+    term_new = {
+      "<A-c>",
+      function()
+        _G.create_new_terminal()
+      end,
+      mode = { "t", "n" },
+      desc = "New Terminal Tab",
+    },
+    term_rename = {
+      "<A-r>",
+      function()
+        _G.rename_current_terminal()
+      end,
+      mode = { "t", "n" },
+      desc = "Rename Terminal",
+    },
+    term_next = {
+      "<A-n>",
+      function()
+        _G.cycle_terminal(1)
+      end,
+      mode = { "t", "n" },
+      desc = "Next Terminal Tab",
+    },
+    term_prev = {
+      "<A-p>",
+      function()
+        _G.cycle_terminal(-1)
+      end,
+      mode = { "t", "n" },
+      desc = "Prev Terminal Tab",
     },
     term_normal = {
       "<Esc>",
@@ -58,10 +339,20 @@ local function terminal_keys()
   }
 
   for count = 1, 9 do
-    keys["terminal_" .. count] = {
+    -- 在终端模式下直接 Alt + 数字秒切，无需退出输入模式！
+    keys["terminal_alt_" .. count] = {
+      "<A-" .. count .. ">",
+      function()
+        _G.switch_terminal_by_id(count)
+      end,
+      mode = { "t", "n" },
+      desc = "Switch to Terminal " .. count,
+    }
+    -- 在 Normal 模式下直接按单个数字 1~9 秒切
+    keys["terminal_num_" .. count] = {
       tostring(count),
-      function(self)
-        switch_terminal(self, count)
+      function()
+        _G.switch_terminal_by_id(count)
       end,
       mode = "n",
       desc = "Switch to Terminal " .. count,
@@ -265,11 +556,12 @@ return {
         border = "rounded",
         title = " Terminal ",
         title_pos = "center",
-        width = 0.85,
+        width = 0.8,
         height = 0.8,
-        backdrop = 60,
+        backdrop = false,
         wo = {
-          winbar = "%=%{printf('Terminal %d · %d active · %s', exists('b:snacks_terminal') ? b:snacks_terminal.id : 1, luaeval('#Snacks.terminal.list()'), mode(1) ==# 't' ? 'INPUT' : 'NORMAL')}%=",
+          winblend = 15,
+          winbar = "%!v:lua.render_terminal_winbar()",
         },
         keys = terminal_keys(),
       },
