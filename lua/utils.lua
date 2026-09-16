@@ -194,7 +194,7 @@ end
 
 local active_menu_close = nil
 
-local function cancel_active_inputs()
+function M.cancel_active_inputs()
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(win) then
       local buf = vim.api.nvim_win_get_buf(win)
@@ -214,7 +214,7 @@ function M.open_in_place_menu(title, items)
     active_menu_close = nil
   end
 
-  cancel_active_inputs()
+  M.cancel_active_inputs()
 
   local mouse = vim.fn.getmousepos()
   local lines = {}

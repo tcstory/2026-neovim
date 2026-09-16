@@ -135,7 +135,7 @@ return {
       enabled = true,
       actions = {
         explorer_context_menu = function(picker)
-          cancel_active_inputs()
+          utils.cancel_active_inputs()
           local mouse = vim.fn.getmousepos()
           if mouse.winid == picker.list.win.win then
             picker.list.win:focus()
