@@ -1,6 +1,6 @@
 return {
-  "dlyongemallo/diffview-plus.nvim",
-  version = "*",
+  dir = vim.fn.expand("~/Documents/Coding/nvim-plugins/diffview-plus.nvim"),
+  name = "diffview-plus.nvim",
   -- optional: lazy-load on command
   -- cmd = {
   --     "DiffviewOpen",
@@ -9,7 +9,7 @@ return {
   --     "DiffviewDiffFiles",
   --     "DiffviewLog",
   -- },
-  config = function ()
+  config = function()
     require("diffview").setup({
       file_history_panel = {
         log_options = {
@@ -35,5 +35,5 @@ return {
         },
       },
     })
-  end
+  end,
 }
