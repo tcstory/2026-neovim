@@ -11,6 +11,84 @@ local function open_or_focus_explorer()
   Snacks.explorer({ cwd = utils.tab_or_global_cwd() })
 end
 
+local function find_directories()
+  local cwd = utils.tab_or_global_cwd()
+  local fd = require("snacks.picker.source.files").get_fd()
+
+  if not fd then
+    Snacks.notify.error("Directory search requires fd or fdfind")
+    return
+  end
+
+  Snacks.picker.pick({
+    title = "Directories",
+    cwd = cwd,
+    supports_live = true,
+    live = true,
+    format = "file",
+    layout = {
+      preset = "default",
+      preview = false,
+    },
+    finder = function(_, ctx)
+      local search = ctx.filter.search
+      if search == "" then
+        return function() end
+      end
+
+      return require("snacks.picker.source.proc").proc({
+        cmd = fd,
+        cwd = cwd,
+        notify = false,
+        args = {
+          "--type",
+          "d",
+          "--color",
+          "never",
+          "--hidden",
+          "--exclude",
+          ".git",
+          "--absolute-path",
+          search,
+          ".",
+        },
+        transform = function(item)
+          item.file = vim.fs.normalize(item.text)
+          item.text = item.file
+          item.dir = true
+        end,
+      }, ctx)
+    end,
+    confirm = function(picker, item)
+      picker:close()
+      if not item then
+        return
+      end
+
+      vim.schedule(function()
+        local explorer = Snacks.picker.get({ source = "explorer" })[1]
+        if explorer then
+          explorer:close()
+        end
+
+        vim.schedule(function()
+          Snacks.explorer({
+            cwd = cwd,
+            on_show = function(opened)
+              local Tree = require("snacks.explorer.tree")
+              local Actions = require("snacks.explorer.actions")
+
+              Tree:open(item.file)
+              Actions.update(opened, { target = item.file, refresh = true })
+              opened:focus()
+            end,
+          })
+        end)
+      end)
+    end,
+  })
+end
+
 _G._terminal_names = _G._terminal_names or { [1] = "AI", [2] = "Shell" }
 
 local function get_terminal_display_name(id)
@@ -437,6 +515,12 @@ return {
     picker = {
       enabled = true,
       actions = {
+        explorer_confirm = function(picker, item, action)
+          if item and not item.dir and not picker.input.filter.meta.searching then
+            picker.opts.jump.close = true
+          end
+          require("snacks.explorer.actions").actions.confirm(picker, item, action)
+        end,
         explorer_context_menu = function(picker)
           utils.cancel_active_inputs()
           local mouse = vim.fn.getmousepos()
@@ -527,14 +611,22 @@ return {
         explorer = {
           hidden = true,
           ignored = true,
+          jump = { close = true },
+          layout = {
+            preset = "default",
+            preview = false,
+          },
           win = {
             list = {
               keys = {
+                ["<CR>"] = "explorer_confirm",
+                ["<2-LeftMouse>"] = "explorer_confirm",
                 ["<RightMouse>"] = "explorer_context_menu",
               },
             },
             input = {
               keys = {
+                ["<CR>"] = { "explorer_confirm", mode = { "n", "i" } },
                 ["<RightMouse>"] = "explorer_context_menu",
               },
             },
@@ -578,6 +670,7 @@ return {
     -- { "<leader>:", function() Snacks.picker.command_history() end, desc = "Command History" },
     { "<leader>n", function() Snacks.picker.notifications() end, desc = "Notifications" },
     { "<leader>fe", function() Snacks.explorer({ cwd = utils.tab_or_global_cwd() }) end, desc = "File Explorer" },
+    { "<leader>fd", find_directories, desc = "Find Directories" },
     { "<leader>1", open_or_focus_explorer, desc = "Open or Focus Explorer" },
     -- find
     { "<leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
