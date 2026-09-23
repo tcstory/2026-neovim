@@ -188,8 +188,163 @@ function M.diff_current_file()
   local temp_file = vim.fn.tempname()
   local lines = vim.split(head_content, "\n", { plain = true })
   vim.fn.writefile(lines, temp_file)
-
   vim.cmd("CodeDiff file " .. vim.fn.fnameescape(temp_file) .. " " .. vim.fn.fnameescape(file))
+end
+
+function M.get_blame_commit_at_line(blm_win, lnum)
+  if not blm_win or not vim.api.nvim_win_is_valid(blm_win) then
+    return nil
+  end
+
+  local line = lnum
+  if not line or line <= 0 then
+    line = vim.api.nvim_win_get_cursor(blm_win)[1]
+  end
+
+  -- 1. 尝试从同一个 Tab 的主编辑区 Buffer 的 Gitsigns Cache 中读取精准 Blame 记录
+  local cur_tab = vim.api.nvim_win_get_tabpage(blm_win)
+  local main_buf = nil
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(cur_tab)) do
+    if w ~= blm_win and vim.api.nvim_win_is_valid(w) then
+      local b = vim.api.nvim_win_get_buf(w)
+      if vim.bo[b].filetype ~= "gitsigns-blame" and vim.bo[b].buftype == "" then
+        main_buf = b
+        break
+      end
+    end
+  end
+
+  local ok_cache, gitsigns_cache = pcall(require, "gitsigns.cache")
+  local cache = ok_cache and gitsigns_cache.cache
+  local bcache = (cache and main_buf) and cache[main_buf]
+
+  if not (bcache and bcache.blame and bcache.blame.entries) and cache then
+    for _, c in pairs(cache) do
+      if c.blame and c.blame.entries then
+        bcache = c
+        break
+      end
+    end
+  end
+
+  if bcache and bcache.blame and bcache.blame.entries then
+    local entry = bcache.blame.entries[line]
+    if entry and entry.commit then
+      local sha = entry.commit.sha or ""
+      return {
+        sha = sha,
+        abbrev_sha = entry.commit.abbrev_sha or sha:sub(1, 7),
+        author = entry.commit.author or "",
+        summary = entry.commit.summary or "",
+        is_uncommitted = (sha == "" or sha:match("^0+$") ~= nil),
+        file = bcache.file,
+      }
+    end
+  end
+
+  -- 2. Fallback: 直接从 blame 缓冲区文本中正则扫描短 Commit Hash
+  local blm_buf = vim.api.nvim_win_get_buf(blm_win)
+  if vim.api.nvim_buf_is_valid(blm_buf) then
+    local lines = vim.api.nvim_buf_get_lines(blm_buf, 0, -1, false)
+    for i = line, 1, -1 do
+      local text = lines[i]
+      if text then
+        local sha = text:match("%s([0-9a-fA-F]{7,40})%s") or text:match("^[^%w]*([0-9a-fA-F]{7,40})")
+        if sha then
+          return {
+            sha = sha,
+            abbrev_sha = sha:sub(1, 7),
+            author = "",
+            summary = "",
+            is_uncommitted = (sha:match("^0+$") ~= nil),
+          }
+        end
+      end
+    end
+  end
+
+  return nil
+end
+
+function M.show_commit_in_graph(target_sha)
+  if not target_sha or target_sha == "" then
+    vim.notify("未找到有效的提交 Hash", vim.log.levels.WARN)
+    return
+  end
+
+  local clean_sha = target_sha:gsub("[^0-9a-fA-F]", "")
+  if clean_sha == "" or clean_sha:match("^0+$") then
+    vim.notify("无效的提交 Hash", vim.log.levels.WARN)
+    return
+  end
+
+  local short_sha = clean_sha:sub(1, 7)
+  local ok, neogit = pcall(require, "neogit")
+  if not ok then
+    vim.notify("Neogit 插件未加载", vim.log.levels.ERROR)
+    return
+  end
+
+  -- 计算智能锚点，确保即使目标提交距离 HEAD 较远，也能在 Git 图谱中完整展示其前后的提交
+  local anchor_ref = clean_sha
+  local res = vim.system({ "git", "rev-list", "--ancestry-path", clean_sha .. "..HEAD" }, { text = true }):wait()
+  if res.code == 0 and res.stdout and res.stdout ~= "" then
+    local descendants = vim.split(vim.trim(res.stdout), "\n", { plain = true })
+    if #descendants > 0 then
+      -- 取目标提交之后约 15~20 个提交作为头部锚点（rev-list 倒序排列，末尾是最邻近的直接子提交）
+      local idx = math.max(1, #descendants - 15)
+      anchor_ref = descendants[idx]
+    end
+  end
+
+  -- 打开包含上下文的 Git 图谱
+  neogit.action("log", "log_current", { anchor_ref, "--graph", "--color", "--decorate" })()
+
+  -- 轮询等待图谱窗口渲染就绪，精准跳转定位到该 Commit
+  local retries = 0
+  local function try_jump()
+    retries = retries + 1
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_is_valid(win) then
+        local buf = vim.api.nvim_win_get_buf(win)
+        if vim.bo[buf].filetype == "NeogitLogView" then
+          local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+          for idx, l in ipairs(lines) do
+            if l:find(short_sha, 1, true) then
+              vim.api.nvim_set_current_win(win)
+              vim.api.nvim_win_set_cursor(win, { idx, 0 })
+              vim.cmd("normal! zz")
+              pcall(function()
+                local ns = vim.api.nvim_create_namespace("neogit_jump_hl")
+                vim.hl.range(buf, ns, "Visual", { idx - 1, 0 }, { idx - 1, -1 }, { timeout = 1500 })
+              end)
+              vim.notify("已在 Git Graph 中定位到提交: " .. short_sha, vim.log.levels.INFO)
+              return
+            end
+          end
+        end
+      end
+    end
+
+    if retries < 25 then
+      vim.defer_fn(try_jump, 50)
+    else
+      vim.notify("在 Git Graph 中未找到提交: " .. short_sha, vim.log.levels.WARN)
+    end
+  end
+
+  vim.defer_fn(try_jump, 60)
+end
+
+function M.show_commit_diff(target_sha)
+  if not target_sha or target_sha == "" or target_sha:match("^0+$") then
+    vim.notify("未找到有效的提交 Hash", vim.log.levels.WARN)
+    return
+  end
+
+  local short_sha = target_sha:sub(1, 7)
+  vim.cmd("DiffviewOpen " .. target_sha .. "^!")
+  vim.notify("正在查看提交 " .. short_sha .. " 的完整改动", vim.log.levels.INFO)
 end
 
 local active_menu_close = nil

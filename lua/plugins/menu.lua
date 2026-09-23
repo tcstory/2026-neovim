@@ -93,18 +93,66 @@ local function setup_file_menu()
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "gitsigns-blame" then
       if vim.api.nvim_win_is_valid(winid) then
         vim.api.nvim_set_current_win(winid)
+        if mouse.line > 0 then
+          pcall(vim.api.nvim_win_set_cursor, winid, { mouse.line, 0 })
+        end
       end
-      utils.open_in_place_menu("Git Blame", {
-        {
-          text = "关闭 Git Blame",
+
+      local lnum = mouse.line > 0 and mouse.line or vim.api.nvim_win_get_cursor(winid)[1]
+      local info = utils.get_blame_commit_at_line(winid, lnum)
+
+      local menu_title = "Git Blame"
+      local menu_items = {}
+
+      if info and info.sha and not info.is_uncommitted then
+        local summary_preview = info.summary ~= "" and (": " .. info.summary) or ""
+        if vim.fn.strdisplaywidth(summary_preview) > 28 then
+          summary_preview = summary_preview:sub(1, 25) .. "..."
+        end
+        menu_title = info.abbrev_sha .. summary_preview
+
+        table.insert(menu_items, {
+          text = "在 Git 图谱中定位此提交",
           action = function()
-            if vim.api.nvim_win_is_valid(winid) then
-              vim.api.nvim_win_close(winid, true)
-            end
+            utils.show_commit_in_graph(info.sha)
           end,
-          shortcut = "q",
-        },
+          shortcut = "Enter",
+        })
+        table.insert(menu_items, {
+          text = "查看此提交完整改动 (Diff)",
+          action = function()
+            utils.show_commit_diff(info.sha)
+          end,
+          shortcut = "d",
+        })
+        table.insert(menu_items, {
+          text = "复制 Commit Hash",
+          action = function()
+            vim.fn.setreg("+", info.sha)
+            vim.notify("已复制 Commit Hash: " .. info.sha)
+          end,
+          shortcut = "y",
+        })
+      else
+        menu_title = "Git Blame (未提交改动)"
+        table.insert(menu_items, {
+          text = "查看本地改动 (Diff This)",
+          action = utils.diff_current_file,
+          shortcut = "d",
+        })
+      end
+
+      table.insert(menu_items, {
+        text = "关闭 Git Blame",
+        action = function()
+          if vim.api.nvim_win_is_valid(winid) then
+            vim.api.nvim_win_close(winid, true)
+          end
+        end,
+        shortcut = "q",
       })
+
+      utils.open_in_place_menu(menu_title, menu_items)
       return
     end
 

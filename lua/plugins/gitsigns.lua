@@ -5,8 +5,47 @@ return {
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "gitsigns-blame",
       callback = function(ev)
+        local utils = require("utils")
         vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
         vim.keymap.set("n", "<Esc>", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
+
+        -- 回车直接在 Git Graph 中定位当前行提交
+        vim.keymap.set("n", "<CR>", function()
+          local lnum = vim.api.nvim_win_get_cursor(0)[1]
+          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+          if info and info.sha and not info.is_uncommitted then
+            utils.show_commit_in_graph(info.sha)
+          end
+        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
+
+        -- 双击左键直接在 Git Graph 中定位
+        vim.keymap.set("n", "<2-LeftMouse>", function()
+          local m = vim.fn.getmousepos()
+          local lnum = (m.line and m.line > 0) and m.line or vim.api.nvim_win_get_cursor(0)[1]
+          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+          if info and info.sha and not info.is_uncommitted then
+            utils.show_commit_in_graph(info.sha)
+          end
+        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
+
+        -- 按 d 查看此 Commit 完整 Diff
+        vim.keymap.set("n", "d", function()
+          local lnum = vim.api.nvim_win_get_cursor(0)[1]
+          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+          if info and info.sha and not info.is_uncommitted then
+            utils.show_commit_diff(info.sha)
+          end
+        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show Commit Diff" })
+
+        -- 按 y 复制 Commit Hash
+        vim.keymap.set("n", "y", function()
+          local lnum = vim.api.nvim_win_get_cursor(0)[1]
+          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+          if info and info.sha and not info.is_uncommitted then
+            vim.fn.setreg("+", info.sha)
+            vim.notify("已复制 Commit Hash: " .. info.sha)
+          end
+        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Yank Commit Hash" })
       end,
     })
   end,
