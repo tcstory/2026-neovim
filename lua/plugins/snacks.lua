@@ -25,33 +25,38 @@ local function find_directories()
     cwd = cwd,
     supports_live = true,
     live = true,
+    ignored = false,
     format = "file",
     layout = {
       preset = "default",
       preview = false,
     },
-    finder = function(_, ctx)
+    finder = function(opts, ctx)
       local search = ctx.filter.search
       if search == "" then
         return function() end
       end
 
+      local args = {
+        "--type",
+        "d",
+        "--color",
+        "never",
+        "--hidden",
+        "--exclude",
+        ".git",
+        "--absolute-path",
+      }
+      if opts.ignored then
+        args[#args + 1] = "--no-ignore"
+      end
+      vim.list_extend(args, { search, "." })
+
       return require("snacks.picker.source.proc").proc({
         cmd = fd,
         cwd = cwd,
         notify = false,
-        args = {
-          "--type",
-          "d",
-          "--color",
-          "never",
-          "--hidden",
-          "--exclude",
-          ".git",
-          "--absolute-path",
-          search,
-          ".",
-        },
+        args = args,
         transform = function(item)
           item.file = vim.fs.normalize(item.text)
           item.text = item.file
@@ -59,6 +64,13 @@ local function find_directories()
         end,
       }, ctx)
     end,
+    win = {
+      list = {
+        keys = {
+          ["I"] = "toggle_ignored",
+        },
+      },
+    },
     confirm = function(picker, item)
       picker:close()
       if not item then
@@ -90,6 +102,7 @@ local function find_directories()
 end
 
 _G._terminal_names = _G._terminal_names or { [1] = "AI", [2] = "Shell" }
+_G._last_terminal_id = _G._last_terminal_id or 1
 
 local function get_terminal_display_name(id)
   local name = _G._terminal_names[id]
@@ -112,6 +125,8 @@ _G.switch_terminal_by_id = function(target_id)
       return
     end
 
+    _G._last_terminal_id = target_id
+
     -- 1. 先展示并聚焦目标终端
     target:show():focus()
     vim.cmd("startinsert")
@@ -123,6 +138,38 @@ _G.switch_terminal_by_id = function(target_id)
       end
     end
   end)
+end
+
+_G.toggle_last_terminal = function()
+  local target_id = _G._last_terminal_id or 1
+  local active_ids = {}
+  local target = nil
+
+  for _, terminal in ipairs(Snacks.terminal.list()) do
+    if terminal.buf and vim.api.nvim_buf_is_valid(terminal.buf) then
+      local info = vim.b[terminal.buf] and vim.b[terminal.buf].snacks_terminal
+      if info and info.id then
+        active_ids[#active_ids + 1] = info.id
+        if info.id == target_id then
+          target = terminal
+        end
+      end
+    end
+  end
+
+  if not target and #active_ids > 0 then
+    table.sort(active_ids)
+    target_id = active_ids[1]
+    _G._last_terminal_id = target_id
+    target = Snacks.terminal.get(nil, { count = target_id, create = false })
+  end
+
+  if target and target:win_valid() then
+    target:hide()
+    return
+  end
+
+  _G.switch_terminal_by_id(target_id)
 end
 
 _G.create_new_terminal = function()
@@ -150,6 +197,12 @@ _G.hide_terminal_win = function()
   vim.schedule(function()
     for _, t in ipairs(Snacks.terminal.list()) do
       if t:win_valid() then
+        if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+          local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+          if info and info.id then
+            _G._last_terminal_id = info.id
+          end
+        end
         t:hide()
       end
     end
@@ -251,21 +304,24 @@ _G.close_terminal_by_id = function(target_id)
       vim.api.nvim_buf_delete(buf, { force = true })
     end
 
-    -- 如果关闭的是当前可见的终端，自动切到剩余的终端
-    if was_win then
-      local remaining_ids = {}
-      for _, t in ipairs(Snacks.terminal.list()) do
-        if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-          local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-          if info and info.id and info.id ~= target_id then
-            table.insert(remaining_ids, info.id)
-          end
+    local remaining_ids = {}
+    for _, t in ipairs(Snacks.terminal.list()) do
+      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
+        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
+        if info and info.id and info.id ~= target_id then
+          table.insert(remaining_ids, info.id)
         end
       end
-      table.sort(remaining_ids)
-      if #remaining_ids > 0 then
-        _G.switch_terminal_by_id(remaining_ids[1])
-      end
+    end
+    table.sort(remaining_ids)
+
+    if _G._last_terminal_id == target_id then
+      _G._last_terminal_id = remaining_ids[1] or 1
+    end
+
+    -- 如果关闭的是当前可见的终端，自动切到剩余的终端
+    if was_win and #remaining_ids > 0 then
+      _G.switch_terminal_by_id(remaining_ids[1])
     end
   end)
 end
@@ -361,7 +417,15 @@ local function terminal_keys()
   local keys = {
     term_hide = {
       "<C-\\>",
-      "hide",
+      function(self)
+        if self.buf and vim.api.nvim_buf_is_valid(self.buf) then
+          local info = vim.b[self.buf] and vim.b[self.buf].snacks_terminal
+          if info and info.id then
+            _G._last_terminal_id = info.id
+          end
+        end
+        self:hide()
+      end,
       mode = "t",
       desc = "Hide Terminal",
     },
@@ -700,6 +764,6 @@ return {
     { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
     -- search
     -- { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
-    { "<C-\\>", function() Snacks.terminal.toggle() end, desc = "Toggle Terminal" },
+    { "<C-\\>", function() _G.toggle_last_terminal() end, desc = "Toggle Last Terminal" },
   }
 }
