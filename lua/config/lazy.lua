@@ -135,6 +135,7 @@ vim.keymap.set("n", "P", function()
 end, { desc = "Paste Before with Reindent" })
 
 require("config.neovide")
+require("config.autosave")
 
 -- Setup lazy.nvim
 require("lazy").setup({
