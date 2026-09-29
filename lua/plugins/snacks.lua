@@ -716,7 +716,7 @@ return {
         height = 0.8,
         backdrop = false,
         wo = {
-          winblend = 15,
+          winblend = 0,
           winbar = "%!v:lua.render_terminal_winbar()",
         },
         keys = terminal_keys(),
