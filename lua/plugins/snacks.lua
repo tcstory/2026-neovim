@@ -549,6 +549,7 @@ return {
   end,
   ---@type snacks.Config
   opts = {
+    image = { enabled = true, doc = { enabled = false } },
     bigfile = { enabled = true },
     dashboard = {
       enabled = true,
