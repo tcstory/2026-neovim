@@ -459,6 +459,8 @@ function M.open_in_place_menu(title, items)
     width = width,
     height = height,
     style = "minimal",
+    -- Keep the menu above its source window, including floating explorers.
+    zindex = math.max(50, (vim.api.nvim_win_get_config(0).zindex or 0) + 1),
     border = "rounded",
     title = (title and title ~= "") and (" " .. title .. " ") or nil,
     title_pos = "center",
