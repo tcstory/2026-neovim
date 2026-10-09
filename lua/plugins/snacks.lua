@@ -767,6 +767,7 @@ return {
     { "<leader>sb", function() Snacks.picker.lines() end, desc = "Lines" }, -- 在当前 buffer 中查询
     { "<leader>sB", function() Snacks.picker.grep_buffers() end, desc = "Grep Buffers" }, -- 在所有打开的 buffer 中查询
     { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
+    { "<leader>s.", function() Snacks.picker.grep({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Grep Here" },
     -- search
     -- { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
     { "<C-\\>", function() _G.toggle_last_terminal() end, desc = "Toggle Last Terminal" },
