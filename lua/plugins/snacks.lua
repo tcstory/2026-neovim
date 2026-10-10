@@ -606,17 +606,33 @@ return {
           local target_path = item.file
           local name = item.file and vim.fs.basename(item.file) or target_dir
 
+          local function open_directory_picker(source)
+            Snacks.picker[source]({
+              cwd = target_dir,
+              jump = { close = true },
+              confirm = function(search_picker, search_item, action)
+                search_picker:norm(function()
+                  local has_selection = #search_picker:selected({ fallback = true }) > 0
+                  require("snacks.picker.actions").jump(search_picker, search_item, action)
+                  if has_selection then
+                    picker:close()
+                  end
+                end)
+              end,
+            })
+          end
+
           local menu_items = {
             {
               text = "搜索此目录内容 (Grep)",
               action = function()
-                Snacks.picker.grep({ cwd = target_dir })
+                open_directory_picker("grep")
               end,
             },
             {
               text = "在此目录查找文件 (Files)",
               action = function()
-                Snacks.picker.files({ cwd = target_dir })
+                open_directory_picker("files")
               end,
             },
             {
