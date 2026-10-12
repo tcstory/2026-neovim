@@ -205,6 +205,49 @@ function M.render()
 end
 
 local function setup_highlights()
+  local colors_name = vim.g.colors_name
+  if colors_name == "nord" then
+    local ok, c = pcall(require, "nord.colors")
+    local nord0 = (ok and c and c.nord0_gui) or "#2e3440"
+    local nord1 = (ok and c and c.nord1_gui) or "#3b4252"
+    local nord2 = (ok and c and c.nord2_gui) or "#434c5e"
+    local nord4 = (ok and c and c.nord4_gui) or "#d8dee9"
+    local nord6 = (ok and c and c.nord6_gui) or "#eceff4"
+    local nord8 = (ok and c and c.nord8_gui) or "#88c0d0"
+    local nord11 = (ok and c and c.nord11_gui) or "#bf616a"
+    local nord13 = (ok and c and c.nord13_gui) or "#ebcb8b"
+
+    vim.api.nvim_set_hl(0, "TabLineSel", {
+      bg = nord2,
+      fg = nord6,
+      bold = true,
+    })
+    vim.api.nvim_set_hl(0, "TabLine", {
+      bg = nord1,
+      fg = nord4,
+    })
+    vim.api.nvim_set_hl(0, "TabLineFill", {
+      bg = nord0,
+    })
+    vim.api.nvim_set_hl(0, "TabLineMod", {
+      fg = nord13,
+      bold = true,
+    })
+    vim.api.nvim_set_hl(0, "TabLineClose", {
+      bg = nord1,
+      fg = nord11,
+    })
+    vim.api.nvim_set_hl(0, "TabLineCloseSel", {
+      bg = nord2,
+      fg = nord11,
+    })
+    vim.api.nvim_set_hl(0, "TabLineNew", {
+      fg = nord8,
+      bold = true,
+    })
+    return
+  end
+
   local ok, c = pcall(function()
     return require("tokyonight.colors").setup()
   end)
