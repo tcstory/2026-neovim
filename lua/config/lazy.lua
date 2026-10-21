@@ -69,6 +69,9 @@ vim.keymap.set("n", "<leader>ba", function() Snacks.bufdelete.all() end, { desc 
 vim.keymap.set("n", "<leader>bc", "<cmd>enew<cr>", { desc = "New Buffer" })
 vim.keymap.set("n", "<leader>bl", function() Snacks.picker.buffers() end, { desc = "List Buffers" })
 vim.keymap.set("n", "<leader>bs", "<cmd>update<cr>", { desc = "Save Buffer" })
+vim.keymap.set("n", "<leader>gr", function()
+  require("utils").open_rebased()
+end, { desc = "Open Rebased (Git GUI)" })
 
 local checktime_group = vim.api.nvim_create_augroup("tcstory_checktime", { clear = true })
 local fcitx_terminal_group = vim.api.nvim_create_augroup("tcstory_fcitx_terminal", { clear = true })

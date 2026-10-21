@@ -532,4 +532,31 @@ function M.open_in_place_menu(title, items)
   return close_menu
 end
 
+function M.open_rebased()
+  local target_dir = nil
+  local bufname = vim.api.nvim_buf_get_name(0)
+  if bufname ~= "" then
+    local dir = vim.fn.fnamemodify(bufname, ":h")
+    target_dir = run_system({ "git", "rev-parse", "--show-toplevel" }, dir)
+  end
+
+  if not target_dir or target_dir == "" then
+    local cwd = M.tab_or_global_cwd()
+    target_dir = run_system({ "git", "rev-parse", "--show-toplevel" }, cwd) or cwd
+  end
+
+  local rebased_bin = vim.fn.exepath("rebased")
+  if rebased_bin == "" then
+    rebased_bin = vim.fn.expand("~/Documents/Rebased-x86_64.AppImage")
+  end
+
+  if vim.fn.filereadable(rebased_bin) == 0 and vim.fn.executable(rebased_bin) == 0 then
+    vim.notify("Rebased binary not found: " .. rebased_bin, vim.log.levels.ERROR)
+    return
+  end
+
+  vim.system({ rebased_bin, target_dir }, { detach = true })
+  vim.notify("Opening Rebased: " .. target_dir, vim.log.levels.INFO)
+end
+
 return M
