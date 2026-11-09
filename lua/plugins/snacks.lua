@@ -669,9 +669,9 @@ return {
           icon = " ",
           padding = 1,
           limit = 5,
+          pick = false,
           action = function(dir)
             vim.cmd.tcd(dir)
-            Snacks.notify.info("已进入目录: " .. dir)
           end,
         },
         { section = "startup" },
