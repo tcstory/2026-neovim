@@ -671,7 +671,7 @@ return {
           limit = 5,
           action = function(dir)
             vim.cmd.tcd(dir)
-            Snacks.dashboard.pick("files")
+            Snacks.notify.info("已进入目录: " .. dir)
           end,
         },
         { section = "startup" },
