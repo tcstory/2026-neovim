@@ -10,13 +10,13 @@ vim.opt.guifont = "LXGW WenKai Mono,BlexMono Nerd Font Mono:h12"
 
 vim.g.neovide_font_hinting = "full"
 
--- 保留 Dragon 的深色质感，只让背景轻微透出桌面。
-vim.g.neovide_opacity = 0.96
-vim.g.neovide_normal_opacity = 0.96
+-- 纯色背景，关闭透明度与桌面透出（与终端版本保持一致）
+vim.g.neovide_opacity = 1.0
+vim.g.neovide_normal_opacity = 1.0
 
--- 浮窗使用轻度模糊、圆角和阴影，增强与编辑区的层次感。
-vim.g.neovide_floating_blur_amount_x = 2.0
-vim.g.neovide_floating_blur_amount_y = 2.0
+-- 浮窗关闭背景模糊与半透，保留阴影与圆角层次感
+vim.g.neovide_floating_blur_amount_x = 0.0
+vim.g.neovide_floating_blur_amount_y = 0.0
 vim.g.neovide_floating_shadow = true
 vim.g.neovide_floating_z_height = 10
 vim.g.neovide_light_angle_degrees = 45
@@ -31,9 +31,9 @@ vim.g.neovide_cursor_animate_in_insert_mode = true
 vim.g.neovide_scroll_animation_length = 0.15
 vim.g.neovide_scroll_animation_far_lines = 1
 
--- 为浮窗模糊提供少量透明度；补全菜单略微更实，保证文字清晰。
-vim.opt.winblend = 10
-vim.opt.pumblend = 6
+-- 纯实色浮窗与补全菜单，文字扎实清晰
+vim.opt.winblend = 0
+vim.opt.pumblend = 0
 
 local function paste_with_reindent()
   vim.cmd.normal({ '"+p', bang = true })
