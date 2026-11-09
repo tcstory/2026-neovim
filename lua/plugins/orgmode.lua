@@ -9,7 +9,7 @@ return {
           "~/Documents/next-decade/work/**/*",
           "~/Documents/next-decade/assets/**/*",
         },
-        org_default_notes_file = "~/Documents/next-decade/work/tasks.org",
+        org_default_notes_file = "~/Documents/next-decade/work/projects/2026.org",
 
         -- 继承用户全局折叠设置 (foldlevel=99)，打开文件时不强制折叠大纲
         org_startup_folded = "inherit",
