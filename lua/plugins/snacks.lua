@@ -663,10 +663,10 @@ return {
       sections = {
         { section = "header" },
         { section = "keys", gap = 1, padding = 1 },
+        -- 标题独立成项，避免 dashboard 刷新时将 projects.action 移到标题后清除。
+        { title = "Projects", icon = " " },
         {
           section = "projects",
-          title = "Projects",
-          icon = " ",
           padding = 1,
           limit = 5,
           pick = false,
