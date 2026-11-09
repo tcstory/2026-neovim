@@ -136,6 +136,7 @@ return {
   end,
   config = function(_, opts)
     require("snacks").setup(opts)
+    terminal.setup()
 
     -- 点击行号/状态列时仅定位光标，不触发代码折叠 (去除默认的 za 行为)
     require("snacks.statuscolumn").click_fold = function()

@@ -6,6 +6,29 @@ local pending = {}
 local names = {}
 local last_id = 1
 
+function M.setup()
+  local function highlights()
+    local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    local float = vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false })
+    local info = vim.api.nvim_get_hl(0, { name = "DiagnosticInfo", link = false })
+    local background = float.bg or normal.bg or "#2e3440"
+    vim.api.nvim_set_hl(0, "TerminalTabActive", {
+      fg = background,
+      bg = info.fg or "#88c0d0",
+      bold = true,
+    })
+    vim.api.nvim_set_hl(0, "TerminalTabInactive", {
+      fg = normal.fg or "#d8dee9",
+      bg = background,
+    })
+  end
+  highlights()
+  vim.api.nvim_create_autocmd("ColorScheme", {
+    group = vim.api.nvim_create_augroup("tcstory_terminal_colors", { clear = true }),
+    callback = highlights,
+  })
+end
+
 -- 编号在整个 Neovim 会话中唯一；创建时固定 cwd，之后按对象切换。
 function M.list()
   local ids = {}
@@ -178,10 +201,11 @@ function M.render()
   for _, id in ipairs(M.list()) do
     local name = M.display_name(id)
     local icon = (id == 1 or name:lower():find("ai", 1, true)) and "󰚩 " or " "
-    parts[#parts + 1] = (id == current and "%#TabLineSel#" or "%#TabLine#")
+    parts[#parts + 1] = (id == current and "%#TerminalTabActive#" or "%#TerminalTabInactive#")
       .. "%"
       .. id
       .. "@v:lua.require'config.terminal'.on_tab_click@ "
+      .. (id == current and "▎ " or "  ")
       .. icon
       .. id
       .. ": "

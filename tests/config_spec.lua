@@ -265,10 +265,23 @@ test("terminal keys reuse objects across directories and tabs", function()
     return #terminal.list() == 2 and vim.b.snacks_terminal.id == 2
   end)
   local second_buf = vim.api.nvim_get_current_buf()
+  local function check_active_tab(id)
+    local rendered = terminal.render()
+    local active = rendered:match("%%#TerminalTabActive#(.-)%%T")
+    check(active and active:find("on_tab_click@ ▎ ", 1, true), "Active terminal has no selection marker")
+    check(active:find(id .. ": ", 1, true), "Selection marker highlights the wrong terminal")
+    check(rendered:find("%#TerminalTabInactive#", 1, true), "Inactive terminal has no separate highlight")
+  end
+  check_active_tab(2)
   invoke("1")
   wait(function()
     return vim.api.nvim_get_current_buf() == first_buf
   end)
+  check_active_tab(1)
+  vim.api.nvim_exec_autocmds("ColorScheme", { pattern = vim.g.colors_name })
+  local active_hl = vim.api.nvim_get_hl(0, { name = "TerminalTabActive", link = false })
+  local inactive_hl = vim.api.nvim_get_hl(0, { name = "TerminalTabInactive", link = false })
+  check(active_hl.bold and active_hl.bg ~= inactive_hl.bg, "Terminal contrast was lost after colorscheme refresh")
   local input = vim.ui.input
   vim.ui.input = function(_, callback)
     callback("50% done%f")
