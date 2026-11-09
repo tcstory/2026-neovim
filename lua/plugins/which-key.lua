@@ -14,6 +14,7 @@ return {
       { "<leader>c", group = "Code" },
       { "<leader>f", group = "Find" },
       { "<leader>g", group = "Git" },
+      { "<leader>m", group = "Markdown" },
       { "<leader>n", group = "Notify" },
       { "<leader>r", group = "Rename" },
       { "<leader>s", group = "Search" },
