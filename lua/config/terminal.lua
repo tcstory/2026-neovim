@@ -5,6 +5,29 @@ local terminals = {}
 local pending = {}
 local names = {}
 local last_id = 1
+local presentation = "float"
+
+local layout_fields =
+  { "position", "relative", "width", "height", "border", "title", "title_pos", "row", "col", "stack" }
+
+local function window_layout()
+  local opts = Snacks.win.resolve("terminal", { position = "float" }, Snacks.config.terminal.win)
+  opts.relative = opts.relative or "editor"
+  if presentation == "bottom" then
+    opts.position, opts.relative = "bottom", "editor"
+    opts.width, opts.height = 0, 0.35
+    opts.border, opts.stack = "none", false
+    opts.title, opts.title_pos, opts.row, opts.col = nil, nil, nil, nil
+  end
+  return opts
+end
+
+local function apply_layout(target)
+  local opts = window_layout()
+  for _, field in ipairs(layout_fields) do
+    target.opts[field] = opts[field]
+  end
+end
 
 function M.setup()
   local function highlights()
@@ -52,7 +75,11 @@ function M.switch(id)
     pending[id] = nil
     local target = terminals[id]
     if not (target and target:buf_valid()) then
-      target = Snacks.terminal.open(nil, { count = id, cwd = require("utils").tab_or_global_cwd() })
+      target = Snacks.terminal.open(nil, {
+        count = id,
+        cwd = require("utils").tab_or_global_cwd(),
+        win = window_layout(),
+      })
       terminals[id] = target
       target:on("BufWipeout", function()
         if terminals[id] == target then
@@ -62,9 +89,16 @@ function M.switch(id)
       end, { buf = true })
     end
     last_id = id
-    if target:win_valid() and vim.api.nvim_win_get_tabpage(target.win) ~= vim.api.nvim_get_current_tabpage() then
+    if
+      target:win_valid()
+      and (
+        vim.api.nvim_win_get_tabpage(target.win) ~= vim.api.nvim_get_current_tabpage()
+        or target.opts.position ~= presentation
+      )
+    then
       target:hide()
     end
+    apply_layout(target)
     target:show():focus()
     vim.cmd.startinsert()
     for _, other in pairs(terminals) do
@@ -72,6 +106,33 @@ function M.switch(id)
         other:hide()
       end
     end
+  end)
+end
+
+function M.toggle_layout(id, _, button)
+  if button and button ~= "l" then
+    return
+  end
+  vim.schedule(function()
+    local target = terminals[id]
+    if not target or not target:buf_valid() or not target:on_current_tab() then
+      return
+    end
+    presentation = presentation == "float" and "bottom" or "float"
+    -- 底部终端成为最后一个普通窗口时，先为悬浮窗口保留一个编辑区域。
+    if presentation == "float" then
+      local windows = vim.tbl_filter(function(win)
+        return vim.api.nvim_win_get_config(win).relative == ""
+      end, vim.api.nvim_tabpage_list_wins(0))
+      if #windows == 1 and windows[1] == target.win then
+        vim.cmd("aboveleft new")
+      end
+    end
+    -- 仅重建窗口，保留终端 buffer、进程及滚动内容。
+    target:hide()
+    apply_layout(target)
+    target:show():focus()
+    vim.cmd.startinsert()
   end)
 end
 
@@ -214,6 +275,11 @@ function M.render()
   end
   parts[#parts + 1] = "%@v:lua.require'config.terminal'.create@%#TabLineNew#  + %T%#Normal#%="
   parts[#parts + 1] = "%#Comment#[" .. (vim.fn.mode(1) == "t" and "INPUT" or "NORMAL") .. "] "
+  parts[#parts + 1] = "%"
+    .. current
+    .. "@v:lua.require'config.terminal'.toggle_layout@%#TabLineNew# "
+    .. (presentation == "float" and "↓ 底部" or "↑ 悬浮")
+    .. " %T "
   parts[#parts + 1] = "%@v:lua.require'config.terminal'.hide@%#TabLineCloseSel#  收起 %T "
   return table.concat(parts)
 end

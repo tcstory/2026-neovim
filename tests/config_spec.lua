@@ -1,7 +1,10 @@
--- Run: XDG_STATE_HOME=$(mktemp -d) nvim --headless -u NONE -i NONE -l tests/config_spec.lua
+-- Run: ./tests/run
 local root = vim.fn.getcwd()
 local fixture = vim.fn.tempname()
 vim.fn.mkdir(fixture, "p")
+-- 在加载 lazy.nvim / vim.loader 之前隔离缓存与状态，避免只读缓存触发加载重试。
+vim.env.XDG_CACHE_HOME = fixture .. "/cache"
+vim.env.XDG_STATE_HOME = fixture .. "/state"
 local failures = {}
 local function check(condition, message)
   assert(condition, message)
@@ -306,6 +309,81 @@ test("terminal keys reuse objects across directories and tabs", function()
     return not vim.api.nvim_buf_is_valid(second_buf)
   end)
   check(vim.api.nvim_buf_is_valid(first_buf), "Closing terminal 2 closed terminal 1")
+  terminal.close(1)
+  wait(function()
+    return #terminal.list() == 0
+  end)
+end)
+
+test("terminal window-bar button switches float and bottom without restarting shell", function()
+  local terminal = require("config.terminal")
+  invoke("<C-\\>")
+  wait(function()
+    return vim.bo.buftype == "terminal" and #terminal.list() == 1
+  end)
+  local buf = vim.api.nvim_get_current_buf()
+  local job = vim.b.terminal_job_id
+  local pid = vim.fn.jobpid(job)
+  local float = vim.api.nvim_win_get_config(0)
+  local function regular_windows()
+    return vim.tbl_filter(function(win)
+      return vim.api.nvim_win_get_config(win).relative == ""
+    end, vim.api.nvim_tabpage_list_wins(0))
+  end
+  local editors = #regular_windows()
+  vim.api.nvim_chan_send(job, "printf 'layout-output\\n'\n")
+  wait(function()
+    return table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n"):find("layout-output", 1, true) ~= nil
+  end)
+  local function click_layout(button)
+    -- 从实际 winbar 获取按钮对应的回调和终端编号。
+    local rendered = terminal.render()
+    local id, callback = rendered:match("%%(%d+)@([^@]*%.toggle_layout)@")
+    check(id and callback, "Layout button missing from terminal window bar")
+    local action = assert(loadstring("return " .. callback:gsub("^v:lua%.", "")))()
+    action(tonumber(id), 1, button or "l", "")
+  end
+  click_layout("r")
+  vim.wait(30)
+  check(vim.api.nvim_win_get_config(0).relative ~= "", "Right click unexpectedly changed terminal layout")
+  click_layout()
+  wait(function()
+    return vim.api.nvim_win_get_buf(0) == buf and vim.api.nvim_win_get_config(0).relative == ""
+  end)
+  check(#regular_windows() == editors + 1, "Bottom terminal did not preserve editor splits")
+  check(vim.api.nvim_win_get_width(0) == vim.o.columns, "Bottom terminal does not span editor width")
+  check(vim.api.nvim_win_get_height(0) < vim.o.lines / 2, "Bottom terminal takes too much height")
+  check(vim.b.terminal_job_id == job and vim.fn.jobpid(job) == pid, "Layout switch restarted the shell")
+  check(terminal.render():find("↑ 悬浮", 1, true), "Bottom mode has no return-to-float button")
+  terminal.hide()
+  invoke("<C-\\>")
+  wait(function()
+    return vim.api.nvim_get_current_buf() == buf
+  end)
+  check(vim.api.nvim_win_get_config(0).relative == "", "Reopening terminal lost bottom mode")
+  invoke("2")
+  wait(function()
+    return vim.b.snacks_terminal and vim.b.snacks_terminal.id == 2
+  end)
+  check(vim.api.nvim_win_get_config(0).relative == "", "New terminal did not inherit bottom mode")
+  invoke("1")
+  wait(function()
+    return vim.api.nvim_get_current_buf() == buf
+  end)
+  click_layout()
+  wait(function()
+    return vim.api.nvim_win_get_buf(0) == buf and vim.api.nvim_win_get_config(0).relative ~= ""
+  end)
+  local restored = vim.api.nvim_win_get_config(0)
+  check(restored.width == float.width and restored.height == float.height, "Float dimensions were not restored")
+  check(#regular_windows() == editors, "Switching back to float left a split behind")
+  check(vim.b.terminal_job_id == job and vim.fn.jobpid(job) == pid, "Returning to float restarted the shell")
+  check(
+    table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n"):find("layout-output", 1, true),
+    "Terminal output was lost"
+  )
+  check(Snacks.config.terminal.win.position == "float", "Layout switch mutated global terminal configuration")
+  terminal.close(2)
   terminal.close(1)
   wait(function()
     return #terminal.list() == 0

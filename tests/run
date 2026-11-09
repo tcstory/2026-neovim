@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+cd -- "$(dirname -- "$0")/.."
+
+# 每个测试进程及子进程的地址空间上限为 2 GiB。
+ulimit -v 2097152
+# TERM 未生效时强制 KILL，确保配置加载死循环不能无限运行。
+exec timeout --signal=TERM --kill-after=2s 60s \
+  nvim --headless -u NONE -i NONE -l tests/config_spec.lua
