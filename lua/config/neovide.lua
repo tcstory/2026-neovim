@@ -71,3 +71,14 @@ vim.keymap.set("c", "<C-S-v>", "<C-r>+", { desc = "Paste from Clipboard" })
 vim.keymap.set("n", "<C-S-v>", paste_with_reindent, { desc = "Paste from Clipboard" })
 vim.keymap.set("v", "<C-S-v>", '"+p', { desc = "Paste from Clipboard" })
 vim.keymap.set("t", "<C-S-v>", paste_to_terminal, { desc = "Paste from Clipboard" })
+
+--------------------------------------------------------------------------------
+-- 待办与能力跟踪 (TODO & Feature Tracking)
+--------------------------------------------------------------------------------
+-- [图片渲染限制与未来展望]
+-- 现状：当前 Neovide（v0.16.x）基于独立 GUI 架构（Rust + Skia），与 Neovim 通过 RPC 通信，
+-- 不解析终端转义序列，因此暂不支持 Kitty Graphics Protocol（无法像 Kitty 终端那样使用 image.nvim 行内渲染）。
+-- 当前解决方案：Markdown/图表采用 `<leader>mp`（markdown-preview.nvim）在浏览器中高清实时预览。
+-- 未来规划：当 Neovide 官方落地原生图像绘制 RPC/协议支持（跟踪 Issue #2088 / #2663）后，
+-- 可在此处或插件配置中引入行内图片/文档图表渲染能力。
+

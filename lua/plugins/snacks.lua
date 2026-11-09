@@ -413,8 +413,115 @@ _G.render_terminal_winbar = function()
   return s
 end
 
+local function strip_ansi(str)
+  str = str:gsub("\27%]8;;[^\27\7]*[\27\7]\27?\\?", "")
+  str = str:gsub("\27%[[0-9;]*[a-zA-Z]", "")
+  return str
+end
+
+local function find_file_in_text(text)
+  text = strip_ansi(text)
+  text = text:gsub("vscode://file", ""):gsub("file://", "")
+  local candidates = {}
+  -- 匹配 路径:行号(:列号)
+  for p, l in text:gmatch("([%a%d%-_./]+%.[%a%d]+):(%d+)") do
+    local full = p
+    if not vim.startswith(full, "/") and not vim.startswith(full, "~") then
+      full = vim.fs.normalize(vim.fn.getcwd() .. "/" .. full)
+    end
+    if vim.uv.fs_stat(full) then
+      table.insert(candidates, { path = full, line = tonumber(l) })
+    end
+  end
+  if #candidates == 0 then
+    -- 匹配纯路径
+    for p in text:gmatch("([%a%d%-_./]+%.[%a%d]+)") do
+      local full = p
+      if not vim.startswith(full, "/") and not vim.startswith(full, "~") then
+        full = vim.fs.normalize(vim.fn.getcwd() .. "/" .. full)
+      end
+      if vim.uv.fs_stat(full) then
+        table.insert(candidates, { path = full, line = 1 })
+      end
+    end
+  end
+  return candidates[1]
+end
+
+local function jump_to_terminal_target(self, target)
+  if not target or not target.path then
+    return false
+  end
+  self:hide()
+  vim.schedule(function()
+    vim.cmd(string.format("edit +%d %s", target.line or 1, vim.fn.fnameescape(target.path)))
+    vim.cmd("normal! zvzz")
+    vim.notify(string.format("已定位至: %s:%d", vim.fn.fnamemodify(target.path, ":."), target.line or 1), vim.log.levels.INFO)
+  end)
+  return true
+end
+
+local function try_jump_from_mouse(self)
+  local mouse = vim.fn.getmousepos()
+  if not mouse or mouse.winid == 0 then
+    return false
+  end
+  local bufnr = vim.api.nvim_win_get_buf(mouse.winid)
+  local line_num = mouse.line
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if not lines or #lines == 0 then
+    return false
+  end
+  local target = find_file_in_text(lines[1])
+  if target then
+    return jump_to_terminal_target(self, target)
+  end
+  return false
+end
+
+local function try_jump_from_cursor(self)
+  local bufnr = self.buf or vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line_num = cursor[1]
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if not lines or #lines == 0 then
+    return false
+  end
+  local target = find_file_in_text(lines[1])
+  if target then
+    return jump_to_terminal_target(self, target)
+  end
+  return false
+end
+
 local function terminal_keys()
   local keys = {
+    term_jump_ctrl_click = {
+      "<C-LeftMouse>",
+      function(self)
+        try_jump_from_mouse(self)
+      end,
+      mode = { "t", "n" },
+      desc = "Ctrl+Click on file path to jump",
+    },
+    term_jump_double_click = {
+      "<2-LeftMouse>",
+      function(self)
+        try_jump_from_mouse(self)
+      end,
+      mode = { "t", "n" },
+      desc = "Double click file path to jump",
+    },
+    term_jump_cr = {
+      "<CR>",
+      function(self)
+        if not try_jump_from_cursor(self) then
+          vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "n", false)
+        end
+      end,
+      mode = "n",
+      desc = "Press Enter on file path in normal mode to jump",
+    },
     term_hide = {
       "<C-\\>",
       function(self)

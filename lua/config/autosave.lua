@@ -1,7 +1,7 @@
 local launched_with_autosave = vim.env.TCSTORY_NVIM_AUTOSAVE == "1"
 vim.env.TCSTORY_NVIM_AUTOSAVE = nil
 
-local enabled = vim.g.neovide or launched_with_autosave
+local enabled = launched_with_autosave
 local api = vim.api
 local M = { enabled = enabled }
 
