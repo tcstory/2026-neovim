@@ -85,11 +85,11 @@ function M.on_tab_click(tab_nr, _, button)
   elseif button == "m" then
     vim.cmd(tab_nr .. "tabclose")
   elseif button == "r" then
-    local utils = require("utils")
+    local menu = require("config.context_menu")
     local title = get_tab_title(tabpage)
     local tab_cwd = vim.fn.getcwd(-1, tab_nr)
 
-    utils.open_in_place_menu("工作区: " .. title, {
+    menu.open_in_place_menu("工作区: " .. title, {
       {
         text = "切换到此工作区",
         shortcut = "Enter",
@@ -177,7 +177,7 @@ function M.render()
     -- Tab 主体点击响应区域 (左键切换，右键菜单，中键关闭)
     s = s .. "%" .. i .. "@v:lua.require'tabline'.on_tab_click@"
 
-    s = s .. " " .. icon .. i .. " " .. title
+    s = s .. " " .. icon .. i .. " " .. title:gsub("%%", "%%%%")
 
     if win_count > 1 then
       s = s .. " [" .. win_count .. "]"
@@ -192,7 +192,15 @@ function M.render()
 
     -- 独立的关闭按钮点击热区 (同时支持原生 %X 与 Lua 回调，宽度扩大为 '  ')
     local close_hl = is_selected and "%#TabLineCloseSel#" or "%#TabLineClose#"
-    s = s .. "%" .. i .. "X%" .. i .. "@v:lua.require'tabline'.on_close_click@" .. close_hl .. "  %T%X" .. (is_selected and "%#TabLineSel#" or "%#TabLine#")
+    s = s
+      .. "%"
+      .. i
+      .. "X%"
+      .. i
+      .. "@v:lua.require'tabline'.on_close_click@"
+      .. close_hl
+      .. "  %T%X"
+      .. (is_selected and "%#TabLineSel#" or "%#TabLine#")
   end
 
   -- 填充剩余顶栏背景

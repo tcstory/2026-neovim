@@ -1,4 +1,6 @@
 local utils = require("utils")
+local terminal = require("config.terminal")
+local menu = require("config.context_menu")
 
 local function open_or_focus_explorer()
   local explorer = Snacks.picker.get({ source = "explorer" })[1]
@@ -101,516 +103,6 @@ local function find_directories()
   })
 end
 
-_G._terminal_names = _G._terminal_names or { [1] = "AI", [2] = "Shell" }
-_G._last_terminal_id = _G._last_terminal_id or 1
-
-local function get_terminal_display_name(id)
-  local name = _G._terminal_names[id]
-  if name and name ~= "" then
-    return name
-  end
-  if id == 1 then
-    return "AI"
-  elseif id == 2 then
-    return "Shell"
-  else
-    return "Term " .. id
-  end
-end
-
-_G.switch_terminal_by_id = function(target_id)
-  vim.schedule(function()
-    local target = Snacks.terminal.get(nil, { count = target_id })
-    if not target then
-      return
-    end
-
-    _G._last_terminal_id = target_id
-
-    -- 1. 先展示并聚焦目标终端
-    target:show():focus()
-    vim.cmd("startinsert")
-
-    -- 2. 同步关闭其他已打开的终端窗口（避免先关后开产生的空白闪烁）
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t ~= target and t:win_valid() then
-        t:hide()
-      end
-    end
-  end)
-end
-
-_G.toggle_last_terminal = function()
-  local target_id = _G._last_terminal_id or 1
-  local active_ids = {}
-  local target = nil
-
-  for _, terminal in ipairs(Snacks.terminal.list()) do
-    if terminal.buf and vim.api.nvim_buf_is_valid(terminal.buf) then
-      local info = vim.b[terminal.buf] and vim.b[terminal.buf].snacks_terminal
-      if info and info.id then
-        active_ids[#active_ids + 1] = info.id
-        if info.id == target_id then
-          target = terminal
-        end
-      end
-    end
-  end
-
-  if not target and #active_ids > 0 then
-    table.sort(active_ids)
-    target_id = active_ids[1]
-    _G._last_terminal_id = target_id
-    target = Snacks.terminal.get(nil, { count = target_id, create = false })
-  end
-
-  if target and target:win_valid() then
-    target:hide()
-    return
-  end
-
-  _G.switch_terminal_by_id(target_id)
-end
-
-_G.create_new_terminal = function()
-  vim.schedule(function()
-    local active_ids = {}
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-        if info and info.id then
-          active_ids[info.id] = true
-        end
-      end
-    end
-
-    local next_id = 1
-    while active_ids[next_id] do
-      next_id = next_id + 1
-    end
-
-    _G.switch_terminal_by_id(next_id)
-  end)
-end
-
-_G.hide_terminal_win = function()
-  vim.schedule(function()
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t:win_valid() then
-        if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-          local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-          if info and info.id then
-            _G._last_terminal_id = info.id
-          end
-        end
-        t:hide()
-      end
-    end
-  end)
-end
-
-_G.cycle_terminal = function(direction)
-  vim.schedule(function()
-    local cur_buf = vim.api.nvim_get_current_buf()
-    local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
-    local cur_id = cur_term and cur_term.id or 1
-
-    local active_ids = {}
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-        if info and info.id then
-          table.insert(active_ids, info.id)
-        end
-      end
-    end
-    table.sort(active_ids)
-
-    if #active_ids <= 1 then
-      return
-    end
-
-    local cur_idx = 1
-    for i, id in ipairs(active_ids) do
-      if id == cur_id then
-        cur_idx = i
-        break
-      end
-    end
-
-    local next_idx = cur_idx + direction
-    if next_idx > #active_ids then
-      next_idx = 1
-    elseif next_idx < 1 then
-      next_idx = #active_ids
-    end
-
-    _G.switch_terminal_by_id(active_ids[next_idx])
-  end)
-end
-
-_G.rename_current_terminal = function(target_id)
-  local id = target_id
-  if not id then
-    local cur_buf = vim.api.nvim_get_current_buf()
-    local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
-    id = cur_term and cur_term.id or 1
-  end
-
-  local cur_name = get_terminal_display_name(id)
-
-  vim.schedule(function()
-    vim.ui.input({
-      prompt = "重命名终端 (" .. id .. "): ",
-      default = cur_name,
-    }, function(input)
-      if input and vim.trim(input) ~= "" then
-        _G._terminal_names[id] = vim.trim(input)
-        vim.cmd("redrawtabline")
-        vim.cmd("redrawstatus")
-      end
-      vim.schedule(function()
-        local buf = vim.api.nvim_get_current_buf()
-        if vim.bo[buf].buftype == "terminal" then
-          vim.cmd("startinsert")
-        end
-      end)
-    end)
-  end)
-end
-
-_G.close_terminal_by_id = function(target_id)
-  vim.schedule(function()
-    local to_close = nil
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-        if info and info.id == target_id then
-          to_close = t
-          break
-        end
-      end
-    end
-
-    if not to_close then
-      return
-    end
-
-    local was_win = to_close:win_valid()
-    local buf = to_close.buf
-
-    -- 彻底删除 terminal buffer，终止底层进程并自动触发 BufWipeout 清理
-    if buf and vim.api.nvim_buf_is_valid(buf) then
-      vim.api.nvim_buf_delete(buf, { force = true })
-    end
-
-    local remaining_ids = {}
-    for _, t in ipairs(Snacks.terminal.list()) do
-      if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-        local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-        if info and info.id and info.id ~= target_id then
-          table.insert(remaining_ids, info.id)
-        end
-      end
-    end
-    table.sort(remaining_ids)
-
-    if _G._last_terminal_id == target_id then
-      _G._last_terminal_id = remaining_ids[1] or 1
-    end
-
-    -- 如果关闭的是当前可见的终端，自动切到剩余的终端
-    if was_win and #remaining_ids > 0 then
-      _G.switch_terminal_by_id(remaining_ids[1])
-    end
-  end)
-end
-
-_G.on_terminal_tab_click = function(id, _, button)
-  vim.schedule(function()
-    if button == "r" then
-      local utils = require("utils")
-      local name = get_terminal_display_name(id)
-      utils.open_in_place_menu("终端: " .. name, {
-        {
-          text = "切换到此终端",
-          shortcut = "Enter",
-          action = function()
-            _G.switch_terminal_by_id(id)
-          end,
-        },
-        {
-          text = "重命名此终端",
-          shortcut = "r",
-          action = function()
-            _G.rename_current_terminal(id)
-          end,
-        },
-        {
-          text = "关闭/终止此终端",
-          shortcut = "x",
-          action = function()
-            _G.close_terminal_by_id(id)
-          end,
-        },
-      })
-    elseif button == "m" then
-      _G.close_terminal_by_id(id)
-    else
-      _G.switch_terminal_by_id(id)
-    end
-  end)
-end
-
-_G.render_terminal_winbar = function()
-  local cur_buf = vim.api.nvim_get_current_buf()
-  local cur_term = vim.b[cur_buf] and vim.b[cur_buf].snacks_terminal
-  local cur_id = cur_term and cur_term.id or 1
-
-  local active_ids = {}
-  local seen = {}
-  for _, t in ipairs(Snacks.terminal.list()) do
-    if t.buf and vim.api.nvim_buf_is_valid(t.buf) then
-      local info = vim.b[t.buf] and vim.b[t.buf].snacks_terminal
-      if info and info.id and not seen[info.id] then
-        table.insert(active_ids, info.id)
-        seen[info.id] = true
-      end
-    end
-  end
-  if not seen[cur_id] then
-    table.insert(active_ids, cur_id)
-  end
-  table.sort(active_ids)
-
-  local s = " "
-  for _, id in ipairs(active_ids) do
-    local is_sel = (id == cur_id)
-    local name = get_terminal_display_name(id)
-    local icon = (id == 1 or name:lower():find("ai")) and "󰚩 " or " "
-
-    local hl = is_sel and "%#TabLineSel#" or "%#TabLine#"
-    s = s .. hl
-    s = s .. "%" .. id .. "@v:lua.on_terminal_tab_click@"
-    s = s .. " " .. icon .. id .. ": " .. name .. " "
-    s = s .. "%T"
-    s = s .. "%#Normal# "
-  end
-
-  -- 新建终端加号按钮 (+)
-  s = s .. "%@v:lua.create_new_terminal@%#TabLineNew#  + %T%#Normal#"
-
-  -- 靠右对齐部分
-  s = s .. "%="
-
-  -- 模式提示
-  local mode_text = (vim.fn.mode(1) == "t") and "INPUT" or "NORMAL"
-  s = s .. "%#Comment#[" .. mode_text .. "] "
-
-  -- 收起/隐藏按钮 ()
-  s = s .. "%@v:lua.hide_terminal_win@%#TabLineCloseSel#  收起 %T "
-
-  return s
-end
-
-local function strip_ansi(str)
-  str = str:gsub("\27%]8;;[^\27\7]*[\27\7]\27?\\?", "")
-  str = str:gsub("\27%[[0-9;]*[a-zA-Z]", "")
-  return str
-end
-
-local function find_file_in_text(text)
-  text = strip_ansi(text)
-  text = text:gsub("vscode://file", ""):gsub("file://", "")
-  local candidates = {}
-  -- 匹配 路径:行号(:列号)
-  for p, l in text:gmatch("([%a%d%-_./]+%.[%a%d]+):(%d+)") do
-    local full = p
-    if not vim.startswith(full, "/") and not vim.startswith(full, "~") then
-      full = vim.fs.normalize(vim.fn.getcwd() .. "/" .. full)
-    end
-    if vim.uv.fs_stat(full) then
-      table.insert(candidates, { path = full, line = tonumber(l) })
-    end
-  end
-  if #candidates == 0 then
-    -- 匹配纯路径
-    for p in text:gmatch("([%a%d%-_./]+%.[%a%d]+)") do
-      local full = p
-      if not vim.startswith(full, "/") and not vim.startswith(full, "~") then
-        full = vim.fs.normalize(vim.fn.getcwd() .. "/" .. full)
-      end
-      if vim.uv.fs_stat(full) then
-        table.insert(candidates, { path = full, line = 1 })
-      end
-    end
-  end
-  return candidates[1]
-end
-
-local function jump_to_terminal_target(self, target)
-  if not target or not target.path then
-    return false
-  end
-  self:hide()
-  vim.schedule(function()
-    vim.cmd(string.format("edit +%d %s", target.line or 1, vim.fn.fnameescape(target.path)))
-    vim.cmd("normal! zvzz")
-    vim.notify(string.format("已定位至: %s:%d", vim.fn.fnamemodify(target.path, ":."), target.line or 1), vim.log.levels.INFO)
-  end)
-  return true
-end
-
-local function try_jump_from_mouse(self)
-  local mouse = vim.fn.getmousepos()
-  if not mouse or mouse.winid == 0 then
-    return false
-  end
-  local bufnr = vim.api.nvim_win_get_buf(mouse.winid)
-  local line_num = mouse.line
-  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
-  if not lines or #lines == 0 then
-    return false
-  end
-  local target = find_file_in_text(lines[1])
-  if target then
-    return jump_to_terminal_target(self, target)
-  end
-  return false
-end
-
-local function try_jump_from_cursor(self)
-  local bufnr = self.buf or vim.api.nvim_get_current_buf()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local line_num = cursor[1]
-  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
-  if not lines or #lines == 0 then
-    return false
-  end
-  local target = find_file_in_text(lines[1])
-  if target then
-    return jump_to_terminal_target(self, target)
-  end
-  return false
-end
-
-local function terminal_keys()
-  local keys = {
-    term_jump_ctrl_click = {
-      "<C-LeftMouse>",
-      function(self)
-        try_jump_from_mouse(self)
-      end,
-      mode = { "t", "n" },
-      desc = "Ctrl+Click on file path to jump",
-    },
-    term_jump_double_click = {
-      "<2-LeftMouse>",
-      function(self)
-        try_jump_from_mouse(self)
-      end,
-      mode = { "t", "n" },
-      desc = "Double click file path to jump",
-    },
-    term_jump_cr = {
-      "<CR>",
-      function(self)
-        if not try_jump_from_cursor(self) then
-          vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "n", false)
-        end
-      end,
-      mode = "n",
-      desc = "Press Enter on file path in normal mode to jump",
-    },
-    term_hide = {
-      "<C-\\>",
-      function(self)
-        if self.buf and vim.api.nvim_buf_is_valid(self.buf) then
-          local info = vim.b[self.buf] and vim.b[self.buf].snacks_terminal
-          if info and info.id then
-            _G._last_terminal_id = info.id
-          end
-        end
-        self:hide()
-      end,
-      mode = "t",
-      desc = "Hide Terminal",
-    },
-    term_new = {
-      "<A-c>",
-      function()
-        _G.create_new_terminal()
-      end,
-      mode = { "t", "n" },
-      desc = "New Terminal Tab",
-    },
-    term_rename = {
-      "<A-r>",
-      function()
-        _G.rename_current_terminal()
-      end,
-      mode = { "t", "n" },
-      desc = "Rename Terminal",
-    },
-    term_next = {
-      "<A-n>",
-      function()
-        _G.cycle_terminal(1)
-      end,
-      mode = { "t", "n" },
-      desc = "Next Terminal Tab",
-    },
-    term_prev = {
-      "<A-p>",
-      function()
-        _G.cycle_terminal(-1)
-      end,
-      mode = { "t", "n" },
-      desc = "Prev Terminal Tab",
-    },
-    term_normal = {
-      "<Esc>",
-      function(self)
-        self.esc_timer = self.esc_timer or (vim.uv or vim.loop).new_timer()
-
-        if self.esc_timer:is_active() then
-          self.esc_timer:stop()
-          vim.cmd("stopinsert")
-        else
-          self.esc_timer:start(500, 0, function() end)
-          return "<Esc>"
-        end
-      end,
-      mode = "t",
-      expr = true,
-      desc = "Double escape to normal mode",
-    },
-  }
-
-  for count = 1, 9 do
-    -- 在终端模式下直接 Alt + 数字秒切，无需退出输入模式！
-    keys["terminal_alt_" .. count] = {
-      "<A-" .. count .. ">",
-      function()
-        _G.switch_terminal_by_id(count)
-      end,
-      mode = { "t", "n" },
-      desc = "Switch to Terminal " .. count,
-    }
-    -- 在 Normal 模式下直接按单个数字 1~9 秒切
-    keys["terminal_num_" .. count] = {
-      tostring(count),
-      function()
-        _G.switch_terminal_by_id(count)
-      end,
-      mode = "n",
-      desc = "Switch to Terminal " .. count,
-    }
-  end
-
-  return keys
-end
-
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -695,7 +187,7 @@ return {
           require("snacks.explorer.actions").actions.confirm(picker, item, action)
         end,
         explorer_context_menu = function(picker)
-          utils.cancel_active_inputs()
+          menu.cancel_active_inputs()
           local mouse = vim.fn.getmousepos()
           if mouse.winid == picker.list.win.win then
             picker.list.win:focus()
@@ -793,7 +285,7 @@ return {
             },
           }
 
-          utils.open_in_place_menu(name, menu_items)
+          menu.open_in_place_menu(name, menu_items)
         end,
       },
       sources = {
@@ -846,30 +338,60 @@ return {
         backdrop = false,
         wo = {
           winblend = 0,
-          winbar = "%!v:lua.render_terminal_winbar()",
+          winbar = "%!v:lua.require'config.terminal'.render()",
         },
-        keys = terminal_keys(),
+        keys = terminal.keys(),
       },
     },
     words = { enabled = true },
     styles = {
       notification = {
         -- wo = { wrap = true } -- Wrap notifications
-      }
+      },
     },
   },
   keys = {
     -- Top Pickers & Explorer
     -- { "<leader>:", function() Snacks.picker.command_history() end, desc = "Command History" },
-    { "<leader>n", function() Snacks.picker.notifications() end, desc = "Notifications" },
-    { "<leader>fe", function() Snacks.explorer({ cwd = utils.tab_or_global_cwd() }) end, desc = "File Explorer" },
+    {
+      "<leader>n",
+      function()
+        Snacks.picker.notifications()
+      end,
+      desc = "Notifications",
+    },
+    {
+      "<leader>fe",
+      function()
+        Snacks.explorer({ cwd = utils.tab_or_global_cwd() })
+      end,
+      desc = "File Explorer",
+    },
     { "<leader>fd", find_directories, desc = "Find Directories" },
     { "<leader>1", open_or_focus_explorer, desc = "Open or Focus Explorer" },
     -- find
-    { "<leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
-    { "<leader>f.", function() Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Files Here" },
+    {
+      "<leader>fb",
+      function()
+        Snacks.picker.buffers()
+      end,
+      desc = "Buffers",
+    },
+    {
+      "<leader>f.",
+      function()
+        Snacks.picker.files({ cwd = vim.fn.expand("%:p:h") })
+      end,
+      desc = "Files Here",
+    },
     -- { "<leader>ff", function() Snacks.picker.files({ cwd = utils.tab_or_global_cwd() }) end, desc = "Find Files" },
-    { "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
+    {
+      "<leader>fp",
+      function()
+        Snacks.picker.projects()
+      end,
+      desc = "Projects",
+    },
     -- { "<leader>fy", utils.copy_current_file_path_from_tcd, desc = "Yank File Path From tcd" },
     -- {
     --   "<leader>fc",
@@ -888,12 +410,42 @@ return {
     --   desc = "Files Current",
     -- },
     -- Grep
-    { "<leader>sb", function() Snacks.picker.lines() end, desc = "Lines" }, -- 在当前 buffer 中查询
-    { "<leader>sB", function() Snacks.picker.grep_buffers() end, desc = "Grep Buffers" }, -- 在所有打开的 buffer 中查询
-    { "<leader>sg", function() Snacks.picker.grep() end, desc = "Grep" }, -- 在所有文件中查询
-    { "<leader>s.", function() Snacks.picker.grep({ cwd = vim.fn.expand("%:p:h") }) end, desc = "Grep Here" },
+    {
+      "<leader>sb",
+      function()
+        Snacks.picker.lines()
+      end,
+      desc = "Lines",
+    }, -- 在当前 buffer 中查询
+    {
+      "<leader>sB",
+      function()
+        Snacks.picker.grep_buffers()
+      end,
+      desc = "Grep Buffers",
+    }, -- 在所有打开的 buffer 中查询
+    {
+      "<leader>sg",
+      function()
+        Snacks.picker.grep()
+      end,
+      desc = "Grep",
+    }, -- 在所有文件中查询
+    {
+      "<leader>s.",
+      function()
+        Snacks.picker.grep({ cwd = vim.fn.expand("%:p:h") })
+      end,
+      desc = "Grep Here",
+    },
     -- search
     -- { '<leader>s/', function() Snacks.picker.search_history() end, desc = "Search History" },
-    { "<C-\\>", function() _G.toggle_last_terminal() end, desc = "Toggle Last Terminal" },
-  }
+    {
+      "<C-\\>",
+      function()
+        terminal.toggle()
+      end,
+      desc = "Toggle Last Terminal",
+    },
+  },
 }

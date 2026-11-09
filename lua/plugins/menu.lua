@@ -1,4 +1,6 @@
 local utils = require("utils")
+local git = require("config.git")
+local menu = require("config.context_menu")
 
 local function is_normal_file_buffer(buf)
   if not buf or not vim.api.nvim_buf_is_valid(buf) then
@@ -58,7 +60,13 @@ local function get_statuscolumn_menu_items()
   end
 
   return {
-    { text = "Git Blame", action = function() vim.cmd("Gitsigns blame") end, shortcut = "git" },
+    {
+      text = "Git Blame",
+      action = function()
+        vim.cmd("Gitsigns blame")
+      end,
+      shortcut = "git",
+    },
   }
 end
 
@@ -66,7 +74,7 @@ local function get_editor_menu_items()
   return {
     { text = "复制当前文件地址", action = utils.copy_current_file_path_from_tcd, shortcut = "yf" },
     { text = "复制当前文件所在目录", action = utils.copy_current_file_dir_from_tcd, shortcut = "yd" },
-    { text = "Diff This", action = utils.diff_current_file, shortcut = "HEAD" },
+    { text = "Diff This", action = git.diff_current_file, shortcut = "HEAD" },
     { text = "File History", action = file_history_action(), shortcut = "Hist" },
   }
 end
@@ -78,8 +86,7 @@ local function setup_file_menu()
     local mouse = vim.fn.getmousepos()
 
     -- 检查 Tabline 是否可见（showtabline=2 或 showtabline=1且多于1个tabpage）
-    local tabline_visible = (vim.o.showtabline == 2)
-      or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1)
+    local tabline_visible = (vim.o.showtabline == 2) or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1)
 
     -- 如果 Tabline 可见且点击在第 1 行（Tabline 所在行），不弹出编辑器菜单
     if tabline_visible and mouse.screenrow == 1 then
@@ -99,7 +106,7 @@ local function setup_file_menu()
       end
 
       local lnum = mouse.line > 0 and mouse.line or vim.api.nvim_win_get_cursor(winid)[1]
-      local info = utils.get_blame_commit_at_line(winid, lnum)
+      local info = git.get_blame_commit_at_line(winid, lnum)
 
       local menu_title = "Git Blame"
       local menu_items = {}
@@ -114,14 +121,14 @@ local function setup_file_menu()
         table.insert(menu_items, {
           text = "在 Git 图谱中定位此提交",
           action = function()
-            utils.show_commit_in_graph(info.sha)
+            git.show_commit_in_graph(info.sha, info.cwd)
           end,
           shortcut = "Enter",
         })
         table.insert(menu_items, {
           text = "查看此提交完整改动 (Diff)",
           action = function()
-            utils.show_commit_diff(info.sha)
+            git.show_commit_diff(info.sha, info.cwd)
           end,
           shortcut = "d",
         })
@@ -137,7 +144,7 @@ local function setup_file_menu()
         menu_title = "Git Blame (未提交改动)"
         table.insert(menu_items, {
           text = "查看本地改动 (Diff This)",
-          action = utils.diff_current_file,
+          action = git.diff_current_file,
           shortcut = "d",
         })
       end
@@ -152,7 +159,7 @@ local function setup_file_menu()
         shortcut = "q",
       })
 
-      utils.open_in_place_menu(menu_title, menu_items)
+      menu.open_in_place_menu(menu_title, menu_items)
       return
     end
 
@@ -169,9 +176,9 @@ local function setup_file_menu()
 
     local filename = vim.fs.basename(vim.api.nvim_buf_get_name(buf))
     if is_click_in_statuscolumn(winid, mouse.wincol) then
-      utils.open_in_place_menu(filename, get_statuscolumn_menu_items())
+      menu.open_in_place_menu(filename, get_statuscolumn_menu_items())
     else
-      utils.open_in_place_menu(filename, get_editor_menu_items())
+      menu.open_in_place_menu(filename, get_editor_menu_items())
     end
   end, { desc = "Open context menu" })
 end

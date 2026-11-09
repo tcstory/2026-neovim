@@ -1,14 +1,22 @@
 return {
-  dir = vim.fn.expand("~/Documents/Coding/nvim-plugins/diffview-plus.nvim"),
+  "tcstory/diffview-plus.nvim",
+  commit = "712430437db4edc605236723ae0f6bf8ef21d28c",
   name = "diffview-plus.nvim",
-  -- optional: lazy-load on command
-  -- cmd = {
-  --     "DiffviewOpen",
-  --     "DiffviewToggle",
-  --     "DiffviewFileHistory",
-  --     "DiffviewDiffFiles",
-  --     "DiffviewLog",
-  -- },
+  dependencies = { "nvim-lua/plenary.nvim", "nvim-tree/nvim-web-devicons" },
+  cmd = {
+    "DiffviewOpen",
+    "DiffviewMergeOpen",
+    "DiffviewToggle",
+    "DiffviewFileHistory",
+    "DiffviewDiffFiles",
+    "DiffviewMergeFiles",
+    "DiffviewDiffDirs",
+    "DiffviewLog",
+    "DiffviewClose",
+    "DiffviewFocusFiles",
+    "DiffviewToggleFiles",
+    "DiffviewRefresh",
+  },
   config = function()
     require("diffview").setup({
       file_history_panel = {

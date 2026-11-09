@@ -1,103 +1,149 @@
 local M = {}
 
 function M.setup()
-  if vim.fn.executable("fcitx5-remote") ~= 1 then
+  if vim.fn.executable("fcitx5-remote") ~= 1 or vim.fn.executable("busctl") ~= 1 then
     return
   end
-
-  local has_busctl = vim.fn.executable("busctl") == 1
-
-  --- 查询当前 Rime 是否处于 ASCII (英文) 模式
-  local function is_rime_ascii()
-    if not has_busctl then
-      return nil
-    end
-    local res = vim.system(
-      { "busctl", "--user", "call", "org.fcitx.Fcitx5", "/rime", "org.fcitx.Fcitx.Rime1", "IsAsciiMode" },
-      { text = true }
-    ):wait()
-    if res.code == 0 and res.stdout then
-      return res.stdout:match("b%s+(%a+)") == "true"
-    end
-    return nil
+  if M.configured then
+    return
   end
+  M.configured = true
 
-  --- 设置 Rime 的 ascii_mode (true 为英文模式，false 为中文模式)
-  local function set_rime_ascii(ascii)
-    if has_busctl then
-      vim.system({
-        "busctl",
-        "--user",
-        "call",
-        "org.fcitx.Fcitx5",
-        "/rime",
-        "org.fcitx.Fcitx.Rime1",
-        "SetAsciiMode",
-        "b",
-        ascii and "true" or "false",
-      })
+  local queue, running = {}, false
+  local stopping = false
+  local process
+  local bus = { "busctl", "--user", "call", "org.fcitx.Fcitx5", "/rime", "org.fcitx.Fcitx.Rime1" }
+  local function call(args, callback)
+    if stopping then
+      return
+    end
+    local ok = pcall(function()
+      process = vim.system(args, { text = true, timeout = 250 }, function(result)
+        vim.schedule(function()
+          process = nil
+          if not stopping then
+            callback(result)
+          end
+        end)
+      end)
+    end)
+    if not ok then
+      callback({ code = -1 })
     end
   end
-
-  --- 确保当前输入法处于 rime
-  local function ensure_rime()
-    local res = vim.system({ "fcitx5-remote", "-n" }, { text = true }):wait()
-    if res.code == 0 and res.stdout and vim.trim(res.stdout) ~= "rime" then
-      vim.system({ "fcitx5-remote", "-s", "rime" }):wait()
-    end
+  local function rime(method, extra, callback)
+    local args = vim.list_extend(vim.deepcopy(bus), { method })
+    vim.list_extend(args, extra or {})
+    call(args, callback)
   end
-
+  local function set_ascii(ascii, done)
+    rime("SetAsciiMode", { "b", ascii and "true" or "false" }, done)
+  end
+  local function pump()
+    if running or stopping or #queue == 0 then
+      return
+    end
+    running = true
+    local task = table.remove(queue, 1)
+    task(function()
+      running = false
+      pump()
+    end)
+  end
+  local function enqueue(task)
+    queue[#queue + 1] = task
+    pump()
+  end
+  local function leave(buf)
+    enqueue(function(done)
+      rime("IsAsciiMode", nil, function(result)
+        if result.code == 0 and vim.api.nvim_buf_is_valid(buf) then
+          local value = (result.stdout or ""):match("b%s+(%a+)")
+          if value == "true" or value == "false" then
+            vim.b[buf].saved_rime_chinese = value == "false"
+          end
+        end
+        set_ascii(true, done)
+      end)
+    end)
+  end
+  local function enter(buf)
+    enqueue(function(done)
+      if vim.api.nvim_buf_is_valid(buf) and vim.b[buf].saved_rime_chinese then
+        set_ascii(false, done)
+      else
+        done()
+      end
+    end)
+  end
+  local function english(ensure)
+    enqueue(function(done)
+      if not ensure then
+        return set_ascii(true, done)
+      end
+      call({ "fcitx5-remote", "-n" }, function(result)
+        if result.code == 0 and vim.trim(result.stdout or "") ~= "rime" then
+          call({ "fcitx5-remote", "-s", "rime" }, function()
+            set_ascii(true, done)
+          end)
+        else
+          set_ascii(true, done)
+        end
+      end)
+    end)
+  end
   local group = vim.api.nvim_create_augroup("Fcitx5RimeNativeSwitch", { clear = true })
-
-  -- 离开插入模式：若刚才在打中文，记录并在 Rime 内部切为英文模式 (ascii_mode = true)
   vim.api.nvim_create_autocmd("InsertLeave", {
     group = group,
-    callback = function()
-      local ascii = is_rime_ascii()
-      if ascii == false then
-        vim.b.saved_rime_chinese = true
-        set_rime_ascii(true)
-      elseif ascii == true then
-        vim.b.saved_rime_chinese = false
-      end
+    callback = function(ev)
+      leave(ev.buf)
     end,
   })
-
-  -- 进入插入模式：若离开前是中文状态，自动恢复为中文 (ascii_mode = false)
   vim.api.nvim_create_autocmd("InsertEnter", {
     group = group,
-    callback = function()
-      if vim.b.saved_rime_chinese == true then
-        set_rime_ascii(false)
+    callback = function(ev)
+      enter(ev.buf)
+    end,
+  })
+  vim.api.nvim_create_autocmd("ModeChanged", {
+    group = group,
+    pattern = { "t:*", "*:t" },
+    callback = function(ev)
+      if vim.bo[ev.buf].buftype ~= "terminal" then
+        return
+      end
+      if ev.match:match(":t$") then
+        enter(ev.buf)
+      else
+        leave(ev.buf)
       end
     end,
   })
-
-  -- 退出命令行（搜索、命令）：确保回到 Normal 模式时为英文模式
   vim.api.nvim_create_autocmd("CmdlineLeave", {
     group = group,
     callback = function()
-      set_rime_ascii(true)
+      english(false)
     end,
   })
-
-  -- 窗口重新获得焦点：确保处于 Rime 且为英文模式
   vim.api.nvim_create_autocmd("FocusGained", {
     group = group,
     callback = function()
-      local m = vim.fn.mode()
-      if m == "n" or m:match("^[vV\022sS]") then
-        ensure_rime()
-        set_rime_ascii(true)
+      if vim.fn.mode():match("^[nvVsS\022]") then
+        english(true)
       end
     end,
   })
-
-  -- 初始化：确保当前是 Rime 且处于英文模式
-  local m = vim.fn.mode()
-  if m == "n" or m:match("^[vV\022sS]") then
-    ensure_rime()
-    set_rime_ascii(true)
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = group,
+    callback = function()
+      stopping, queue = true, {}
+      if process then
+        process:kill(15)
+      end
+    end,
+  })
+  if vim.fn.mode():match("^[nvVsS\022]") then
+    english(true)
   end
 end
 

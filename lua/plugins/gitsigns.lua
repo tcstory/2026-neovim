@@ -4,48 +4,65 @@ return {
   init = function()
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "gitsigns-blame",
+      group = vim.api.nvim_create_augroup("tcstory_gitsigns_blame", { clear = true }),
       callback = function(ev)
-        local utils = require("utils")
-        vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
-        vim.keymap.set("n", "<Esc>", "<cmd>close<cr>", { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" })
-
-        -- 回车直接在 Git Graph 中定位当前行提交
-        vim.keymap.set("n", "<CR>", function()
-          local lnum = vim.api.nvim_win_get_cursor(0)[1]
-          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
-          if info and info.sha and not info.is_uncommitted then
-            utils.show_commit_in_graph(info.sha)
+        -- Gitsigns 在 FileType 之后继续定义自己的按键；等初始化完成后再安装。
+        vim.schedule(function()
+          if not vim.api.nvim_buf_is_valid(ev.buf) then
+            return
           end
-        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
+          local git = require("config.git")
+          vim.keymap.set(
+            "n",
+            "q",
+            "<cmd>close<cr>",
+            { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" }
+          )
+          vim.keymap.set(
+            "n",
+            "<Esc>",
+            "<cmd>close<cr>",
+            { buffer = ev.buf, silent = true, nowait = true, desc = "Close Git Blame" }
+          )
 
-        -- 双击左键直接在 Git Graph 中定位
-        vim.keymap.set("n", "<2-LeftMouse>", function()
-          local m = vim.fn.getmousepos()
-          local lnum = (m.line and m.line > 0) and m.line or vim.api.nvim_win_get_cursor(0)[1]
-          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
-          if info and info.sha and not info.is_uncommitted then
-            utils.show_commit_in_graph(info.sha)
-          end
-        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
+          -- 回车直接在 Git Graph 中定位当前行提交
+          vim.keymap.set("n", "<CR>", function()
+            local lnum = vim.api.nvim_win_get_cursor(0)[1]
+            local info = git.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+            if info and info.sha and not info.is_uncommitted then
+              git.show_commit_in_graph(info.sha, info.cwd)
+            end
+          end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
 
-        -- 按 d 查看此 Commit 完整 Diff
-        vim.keymap.set("n", "d", function()
-          local lnum = vim.api.nvim_win_get_cursor(0)[1]
-          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
-          if info and info.sha and not info.is_uncommitted then
-            utils.show_commit_diff(info.sha)
-          end
-        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show Commit Diff" })
+          -- 双击左键直接在 Git Graph 中定位
+          vim.keymap.set("n", "<2-LeftMouse>", function()
+            local m = vim.fn.getmousepos()
+            local lnum = (m.line and m.line > 0) and m.line or vim.api.nvim_win_get_cursor(0)[1]
+            local info = git.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+            if info and info.sha and not info.is_uncommitted then
+              git.show_commit_in_graph(info.sha, info.cwd)
+            end
+          end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show in Git Graph" })
 
-        -- 按 y 复制 Commit Hash
-        vim.keymap.set("n", "y", function()
-          local lnum = vim.api.nvim_win_get_cursor(0)[1]
-          local info = utils.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
-          if info and info.sha and not info.is_uncommitted then
-            vim.fn.setreg("+", info.sha)
-            vim.notify("已复制 Commit Hash: " .. info.sha)
-          end
-        end, { buffer = ev.buf, silent = true, nowait = true, desc = "Yank Commit Hash" })
+          -- 按 d 查看此 Commit 完整 Diff
+          vim.keymap.set("n", "d", function()
+            local lnum = vim.api.nvim_win_get_cursor(0)[1]
+            local info = git.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+            if info and info.sha and not info.is_uncommitted then
+              git.show_commit_diff(info.sha, info.cwd)
+            end
+          end, { buffer = ev.buf, silent = true, nowait = true, desc = "Show Commit Diff" })
+
+          -- 按 y 复制 Commit Hash
+          vim.keymap.set("n", "y", function()
+            local lnum = vim.api.nvim_win_get_cursor(0)[1]
+            local info = git.get_blame_commit_at_line(vim.api.nvim_get_current_win(), lnum)
+            if info and info.sha and not info.is_uncommitted then
+              vim.fn.setreg("+", info.sha)
+              vim.notify("已复制 Commit Hash: " .. info.sha)
+            end
+          end, { buffer = ev.buf, silent = true, nowait = true, desc = "Yank Commit Hash" })
+        end)
       end,
     })
   end,
@@ -115,7 +132,7 @@ return {
     {
       "<leader>gd",
       function()
-        require("utils").diff_current_file()
+        require("config.git").diff_current_file()
       end,
       desc = "Diff This",
     },

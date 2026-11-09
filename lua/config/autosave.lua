@@ -24,14 +24,17 @@ local function can_save(bufnr)
   return M.is_eligible(bufnr) and vim.bo[bufnr].modified
 end
 
+local saving = {}
 local function save_buffer(bufnr)
-  if not can_save(bufnr) then
+  if saving[bufnr] or not can_save(bufnr) then
     return
   end
 
+  saving[bufnr] = true
   local ok, err = pcall(api.nvim_buf_call, bufnr, function()
     vim.cmd("silent update")
   end)
+  saving[bufnr] = nil
   if not ok then
     vim.schedule(function()
       vim.notify(("Auto-save failed: %s"):format(err), vim.log.levels.ERROR)
@@ -43,6 +46,7 @@ local group = api.nvim_create_augroup("tcstory_autosave", { clear = true })
 
 api.nvim_create_autocmd("BufLeave", {
   group = group,
+  nested = true,
   callback = function(args)
     save_buffer(args.buf)
   end,
@@ -50,6 +54,7 @@ api.nvim_create_autocmd("BufLeave", {
 
 api.nvim_create_autocmd("FocusLost", {
   group = group,
+  nested = true,
   callback = function()
     for _, bufnr in ipairs(api.nvim_list_bufs()) do
       save_buffer(bufnr)

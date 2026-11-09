@@ -58,7 +58,11 @@ return {
       -- 开启 Mason
       require("mason").setup()
 
-      local node_bin = "/home/tcstory/.nvm/versions/node/v24.13.0/bin/node"
+      local node_bin = vim.fn.exepath("node")
+      if node_bin == "" then
+        -- 保持配置可加载，缺失依赖由 LSP 启动时明确报告。
+        node_bin = "node"
+      end
       local vue_language_server_path = vim.fn.stdpath("data")
         .. "/mason/packages/vue-language-server/node_modules/@vue/language-server"
       local vtsls_main = vim.fn.stdpath("data")
@@ -145,7 +149,7 @@ return {
         end
 
         local has_vue_target = config_content:match('"vueCompilerOptions"%s*:%s*{[^}]-"target"%s*:%s*[\'"]?2')
-          or config_content:match("'vueCompilerOptions'%s*:%s*{[^}]-'target'%s*:%s*[\'\"]?2")
+          or config_content:match("'vueCompilerOptions'%s*:%s*{[^}]-'target'%s*:%s*['\"]?2")
         if has_vue_target then
           return
         end
@@ -230,10 +234,18 @@ return {
           end
 
           -- 使用 Snacks 替代原生的跳转，界面更漂亮
-          vim.keymap.set("n", "gd", function() Snacks.picker.lsp_definitions() end, bufopts("Definitions"))
-          vim.keymap.set("n", "gr", function() Snacks.picker.lsp_references() end, bufopts("References"))
-          vim.keymap.set("n", "gi", function() Snacks.picker.lsp_implementations() end, bufopts("Implementations"))
-          vim.keymap.set("n", "gt", function() Snacks.picker.lsp_type_definitions() end, bufopts("Type Definitions"))
+          vim.keymap.set("n", "gd", function()
+            Snacks.picker.lsp_definitions()
+          end, bufopts("Definitions"))
+          vim.keymap.set("n", "gr", function()
+            Snacks.picker.lsp_references()
+          end, bufopts("References"))
+          vim.keymap.set("n", "gi", function()
+            Snacks.picker.lsp_implementations()
+          end, bufopts("Implementations"))
+          vim.keymap.set("n", "gt", function()
+            Snacks.picker.lsp_type_definitions()
+          end, bufopts("Type Definitions"))
 
           -- 代码操作和重命名
           vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, bufopts("Code Action"))
