@@ -1,0 +1,27 @@
+# Neovim Configuration Workspace Guidelines
+
+本项目是用户的 Neovim / Neovide 核心配置库。AI 助手（Codex, Antigravity 等）在此工作区进行开发与调试时，必须严格遵守以下准则。
+
+---
+
+## 1. 调试与排查原则
+
+### 1.1 端到端闭环断言（核心准则）
+* **严禁偷换验证目标**：排查快捷键、按键映射、事件通知或命令回调不生效时，**严禁仅单独调用底层 API 进行孤立测试**（例如：不能仅靠手动调用 `vim.notify` 成功就断定按键通知功能正常）。
+* **必须验证完整调用链路**：编写最小无头测试脚本（`nvim --headless`），通过 `vim.fn.maparg` 获取按键绑定的真实回调并执行，或使用真实模拟事件，断言副作用（如通知计数、CWD 改变、Buffer 状态）是否确实发生。
+
+### 1.2 拒绝先入为主的表象归因
+* 当用户反馈在终端或 Neovide 下表现不一时，**优先排查执行逻辑是否真正跑到了**，切忌在未验证调用链的前提下直接归因于环境差异（如高分屏位置、主题对比度、透明度、通知超时等视觉层表象）。
+
+### 1.3 审查插件对配置表的就地修改（In-place Mutation）
+* 部分复杂插件（如 `snacks.nvim`）在初始化解析 sections/options 时可能会就地修改（mutate）用户传入的配置 table（例如在生成 title 行时清空原项的 `action`）。
+* 若配置项莫名失效或回退到默认行为，务必检查配置项是否在插件内部 resolve/setup 流程中被篡改或清空。
+
+---
+
+## 2. 经典排查案例库
+
+* [Dashboard 切换工作区通知未触发故障复盘（2026-11-09）](docs/troubleshooting/2026-11-09-dashboard-notification-debug.md)：
+  * **背景**：Dashboard 按 `1` 切换目录时自定义通知未弹出。
+  * **根因**：`snacks.dashboard.lua` 将同时带有 `title` 与 `action` 的 section 中的 `action` 就地清空为 `nil`，导致项目条目回退为默认切换逻辑。
+  * **教训**：避免只测底层 API，用端到端断言测试抓取事实。
