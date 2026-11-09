@@ -672,6 +672,7 @@ return {
           pick = false,
           action = function(dir)
             vim.cmd.tcd(dir)
+            Snacks.notify.info("已切换工作区: " .. dir, { title = "工作区" })
           end,
         },
         { section = "startup" },
